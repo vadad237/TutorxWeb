@@ -98,8 +98,7 @@ public class CustomExportService : ICustomExportService
         {
             tasks = await _db.TaskItems
                 .Include(t => t.Activity)
-                .Where(t => !t.IsPresentation
-                         && t.Activity.GroupId == request.GroupId
+                .Where(t => t.Activity.GroupId == request.GroupId
                          && !t.Activity.IsArchived)
                 .OrderBy(t => t.Activity.Name).ThenBy(t => t.Title)
                 .ToListAsync();
