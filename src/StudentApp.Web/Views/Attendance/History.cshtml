@@ -67,8 +67,8 @@
                                 @if (Model.StatusMap.TryGetValue(key, out var status))
                                 {
                                     @if (status == AttendanceStatus.Present) { <span class="badge bg-success">P</span> }
-                                    else if (status == AttendanceStatus.Absent) { <span class="badge bg-danger">A</span> }
-                                    else { <span class="badge bg-warning text-dark">E</span> }
+                                    else if (status == AttendanceStatus.Absent) { <span class="badge bg-danger">N</span> }
+                                    else { <span class="badge bg-warning text-dark">O</span> }
                                 }
                                 else
                                 {
