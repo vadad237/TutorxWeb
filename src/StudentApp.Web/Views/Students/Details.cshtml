@@ -1,0 +1,76 @@
+@model StudentDetailsVm
+@{ ViewData["Title"] = Model.FullName; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>@Model.FullName</h2>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm">Upraviť</a>
+        <a asp-action="Index" asp-route-groupId="@Model.GroupId" class="btn btn-secondary btn-sm">Späť</a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <p><strong>Email:</strong> @(Model.Email ?? "Nie je")</p>
+                <p><strong>Číslo karty:</strong> @(Model.CardNumber ?? "Nie je")</p>
+                <p><strong>Ročník:</strong> @(Model.Year.HasValue ? Model.Year.Value.ToString() : "Nie je")</p>
+                <p><strong>Skupina:</strong> @Model.GroupName</p>
+                <p><strong>Stav:</strong>
+                    @if (Model.IsActive) { <span class="badge bg-success">Aktívny</span> }
+                    else { <span class="badge bg-secondary">Neaktívny</span> }
+                </p>
+                <p><strong>Pridaný:</strong> @Model.CreatedAt.ToString("dd.MM.yyyy")</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5>Súhrn dochádzky</h5>
+                <p>Prítomný: <span class="badge bg-success">@Model.AttendanceSummary.PresentCount</span></p>
+                <p>Neprítomný: <span class="badge bg-danger">@Model.AttendanceSummary.AbsentCount</span></p>
+                <p>Ospravedlnený: <span class="badge bg-warning text-dark">@Model.AttendanceSummary.ExcusedCount</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4 class="mb-2">Priradené aktivity</h4>
+@if (Model.AssignedActivities.Any())
+{
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        @foreach (var a in Model.AssignedActivities)
+        {
+            <a asp-controller="Activities" asp-action="Details" asp-route-id="@a.ActivityId"
+               class="badge text-decoration-none fs-6 fw-normal bg-primary">
+                @a.Name
+            </a>
+        }
+    </div>
+}
+else
+{
+    <p class="text-muted mb-4">Nie je priradený k žiadnym aktivitám.</p>
+}
+
+<h4>Hodnotenia</h4>
+@if (Model.Evaluations.Any())
+{
+    <table class="table table-striped">
+        <thead><tr><th>Úloha</th><th>Skóre</th><th>Komentár</th><th>Dátum</th></tr></thead>
+        <tbody>
+            @foreach (var e in Model.Evaluations)
+            {
+                <tr>
+                    <td>@e.TaskName</td>
+                    <td>@e.Score.ToString("F1")</td>
+                    <td>@(e.Comment ?? "-")</td>
+                    <td>@e.EvaluatedAt.ToString("dd.MM.yyyy")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else { <p class="text-muted">Žiadne hodnotenia.</p> }

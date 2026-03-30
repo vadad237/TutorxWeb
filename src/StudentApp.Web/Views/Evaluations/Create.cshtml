@@ -1,0 +1,38 @@
+@model EvaluationCreateVm
+@{ ViewData["Title"] = "Pridať hodnotenie"; }
+
+<h2>Pridať hodnotenie</h2>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create" method="post">
+            <input type="hidden" asp-for="StudentId" />
+            <input type="hidden" asp-for="TaskItemId" />
+            <input type="hidden" asp-for="StudentName" />
+            <input type="hidden" asp-for="TaskName" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label class="form-label">Študent</label>
+                <input type="text" class="form-control" value="@Model.StudentName" disabled />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Úloha</label>
+                <input type="text" class="form-control" value="@Model.TaskName" disabled />
+            </div>
+            <div class="mb-3">
+                <label asp-for="Score" class="form-label">Skóre (0-100) *</label>
+                <input asp-for="Score" class="form-control" type="number" min="0" max="100" step="any" required />
+                <span asp-validation-for="Score" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Comment" class="form-label">Komentár</label>
+                <textarea asp-for="Comment" class="form-control" rows="3" maxlength="500"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Uložiť</button>
+            <a asp-action="Index" class="btn btn-secondary">Zrušiť</a>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,288 @@
+@model CustomExportIndexVm
+@{
+    ViewData["Title"] = "Vlastný export";
+}
+
+@if ((bool?)ViewBag.NoGroupSelected == true)
+{
+    <partial name="_NoGroupSelected" />
+}
+else
+{
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <i class="bi bi-download fs-4 text-primary"></i>
+    <h2 class="mb-0">Vlastný export</h2>
+    <span class="badge bg-secondary ms-1">@Model.GroupName</span>
+</div>
+
+<form asp-action="Generate" asp-controller="CustomExport" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="GroupId" value="@Model.GroupId" />
+
+    <!-- Section selection cards -->
+    <p class="text-muted mb-3">
+        Vyberte sekcie, ktoré chcete zahrnúť. Každý riadok v exporte predstavuje jedného študenta.
+        Stĺpce sa pridajú pre každú vybranú sekciu.
+    </p>
+
+    <div class="row g-3 mb-4">
+
+        <!-- Students -->
+        <div class="col-md-6 col-xl-4">
+            <label class="export-card h-100" id="card-students">
+                <input type="checkbox" name="IncludeStudents" value="true"
+                       class="section-cb d-none" checked data-card="card-students" />
+                <input type="hidden" name="IncludeStudents" value="false" />
+                <div class="card h-100 border-2 cursor-pointer section-card active" data-card="card-students">
+                    <div class="card-body d-flex gap-3 align-items-start">
+                        <div class="section-icon rounded-3 p-2 flex-shrink-0"
+                             style="background:#e8f0fe">
+                            <i class="bi bi-people-fill fs-4" style="color:#1e3a5f"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 fw-semibold">Študenti</h6>
+                            <p class="text-muted small mb-2">Základné informácie o študentoch</p>
+                            <div class="d-flex flex-wrap gap-1">
+                                <span class="badge rounded-pill" style="background:#e8f0fe;color:#1e3a5f">Meno</span>
+                                <span class="badge rounded-pill" style="background:#e8f0fe;color:#1e3a5f">Priezvisko</span>
+                                <span class="badge rounded-pill" style="background:#e8f0fe;color:#1e3a5f">Číslo karty</span>
+                                <span class="badge rounded-pill" style="background:#e8f0fe;color:#1e3a5f">Ročník</span>
+                                <span class="badge rounded-pill" style="background:#e8f0fe;color:#1e3a5f">Email</span>
+                            </div>
+                        </div>
+                        <i class="bi bi-check-circle-fill ms-auto text-primary check-icon" style="font-size:1.2rem"></i>
+                    </div>
+                </div>
+            </label>
+        </div>
+
+        <!-- Attendance -->
+        <div class="col-md-6 col-xl-4">
+            <label class="export-card h-100" id="card-attendance">
+                <input type="checkbox" name="IncludeAttendance" value="true"
+                       class="section-cb d-none" data-card="card-attendance" />
+                <input type="hidden" name="IncludeAttendance" value="false" />
+                <div class="card h-100 border-2 cursor-pointer section-card" data-card="card-attendance">
+                    <div class="card-body d-flex gap-3 align-items-start">
+                        <div class="section-icon rounded-3 p-2 flex-shrink-0"
+                             style="background:#e9f7ef">
+                            <i class="bi bi-calendar-check-fill fs-4" style="color:#1a5276"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 fw-semibold">Dochádzka</h6>
+                            <p class="text-muted small mb-2">Jeden stĺpec na dátum — P&nbsp;/&nbsp;N&nbsp;/&nbsp;O na študenta</p>
+                            <div class="d-flex flex-wrap gap-1">
+                                <span class="badge rounded-pill" style="background:#d5f5e3;color:#1a5276">P = Prítomný</span>
+                                <span class="badge rounded-pill" style="background:#fde8e8;color:#922b21">N = Neprítomný</span>
+                                <span class="badge rounded-pill" style="background:#fef9e7;color:#7d6608">O = Ospravedlnený</span>
+                            </div>
+                        </div>
+                        <i class="bi bi-circle ms-auto text-muted check-icon" style="font-size:1.2rem"></i>
+                    </div>
+                </div>
+            </label>
+        </div>
+
+        <!-- Activities -->
+        <div class="col-md-6 col-xl-4">
+            <label class="export-card h-100" id="card-activities">
+                <input type="checkbox" name="IncludeActivities" value="true"
+                       class="section-cb d-none" data-card="card-activities" />
+                <input type="hidden" name="IncludeActivities" value="false" />
+                <div class="card h-100 border-2 cursor-pointer section-card" data-card="card-activities">
+                    <div class="card-body d-flex gap-3 align-items-start">
+                        <div class="section-icon rounded-3 p-2 flex-shrink-0"
+                             style="background:#e9f7ef">
+                            <i class="bi bi-clipboard-check-fill fs-4" style="color:#1e8449"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 fw-semibold">Aktivity</h6>
+                            <p class="text-muted small mb-2">Jeden stĺpec na aktivitu — ✓ ak je študent priradený</p>
+                            <div class="d-flex flex-wrap gap-1">
+                                <span class="badge rounded-pill" style="background:#e9f7ef;color:#1e8449">Názov aktivity</span>
+                                <span class="badge rounded-pill" style="background:#e9f7ef;color:#1e8449">Priradený ✓</span>
+                            </div>
+                        </div>
+                        <i class="bi bi-circle ms-auto text-muted check-icon" style="font-size:1.2rem"></i>
+                    </div>
+                </div>
+            </label>
+        </div>
+
+        <!-- Tasks & Evaluations -->
+        <div class="col-md-6 col-xl-4">
+            <label class="export-card h-100" id="card-tasks">
+                <input type="checkbox" name="IncludeTasks" value="true"
+                       class="section-cb d-none" data-card="card-tasks" />
+                <input type="hidden" name="IncludeTasks" value="false" />
+                <div class="card h-100 border-2 cursor-pointer section-card" data-card="card-tasks">
+                    <div class="card-body d-flex gap-3 align-items-start">
+                        <div class="section-icon rounded-3 p-2 flex-shrink-0"
+                             style="background:#f4ecf7">
+                            <i class="bi bi-list-task fs-4" style="color:#6c3483"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 fw-semibold">Úlohy a hodnotenia</h6>
+                            <p class="text-muted small mb-2">Jeden stĺpec na úlohu — skóre študenta alebo prázdne</p>
+                            <div class="d-flex flex-wrap gap-1">
+                                <span class="badge rounded-pill" style="background:#f4ecf7;color:#6c3483">Aktivita › Názov úlohy</span>
+                                <span class="badge rounded-pill" style="background:#f4ecf7;color:#6c3483">Skóre</span>
+                            </div>
+                        </div>
+                        <i class="bi bi-circle ms-auto text-muted check-icon" style="font-size:1.2rem"></i>
+                    </div>
+                </div>
+            </label>
+        </div>
+
+        <!-- Presentations -->
+        <div class="col-md-6 col-xl-4">
+            <label class="export-card h-100" id="card-presentations">
+                <input type="checkbox" name="IncludePresentations" value="true"
+                       class="section-cb d-none" data-card="card-presentations" />
+                <input type="hidden" name="IncludePresentations" value="false" />
+                <div class="card h-100 border-2 cursor-pointer section-card" data-card="card-presentations">
+                    <div class="card-body d-flex gap-3 align-items-start">
+                        <div class="section-icon rounded-3 p-2 flex-shrink-0"
+                             style="background:#fef5e4">
+                            <i class="bi bi-easel-fill fs-4" style="color:#935116"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 fw-semibold">Prezentácie</h6>
+                            <p class="text-muted small mb-2">Jeden stĺpec na prezentáciu — ✓ ak je študent priradený</p>
+                            <div class="d-flex flex-wrap gap-1">
+                                <span class="badge rounded-pill" style="background:#fef5e4;color:#935116">Aktivita › Názov (dátum)</span>
+                                <span class="badge rounded-pill" style="background:#fef5e4;color:#935116">Priradený ✓</span>
+                            </div>
+                        </div>
+                        <i class="bi bi-circle ms-auto text-muted check-icon" style="font-size:1.2rem"></i>
+                    </div>
+                </div>
+            </label>
+        </div>
+
+        <!-- Other Attributes -->
+        <div class="col-md-6 col-xl-4">
+            <label class="export-card h-100" id="card-other">
+                <input type="checkbox" name="IncludeOtherAttributes" value="true"
+                       class="section-cb d-none" data-card="card-other" />
+                <input type="hidden" name="IncludeOtherAttributes" value="false" />
+                <div class="card h-100 border-2 cursor-pointer section-card" data-card="card-other">
+                    <div class="card-body d-flex gap-3 align-items-start">
+                        <div class="section-icon rounded-3 p-2 flex-shrink-0"
+                             style="background:#e0f2f1">
+                            <i class="bi bi-tags-fill fs-4" style="color:#117a65"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 fw-semibold">Ostatné atribúty</h6>
+                            <p class="text-muted small mb-2">Jeden stĺpec na vlastný atribút — vybraná hodnota stavu na študenta</p>
+                            <div class="d-flex flex-wrap gap-1">
+                                <span class="badge rounded-pill" style="background:#e0f2f1;color:#117a65">Aktivita › Názov atribútu</span>
+                                <span class="badge rounded-pill" style="background:#e0f2f1;color:#117a65">Hodnota stavu</span>
+                            </div>
+                        </div>
+                        <i class="bi bi-circle ms-auto text-muted check-icon" style="font-size:1.2rem"></i>
+                    </div>
+                </div>
+            </label>
+        </div>
+
+    </div>
+
+    <!-- Format + Export button -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body d-flex flex-wrap align-items-center gap-4">
+
+            <div>
+                <p class="fw-semibold mb-2">Formát</p>
+                <div class="d-flex gap-3">
+                    <div class="form-check format-radio">
+                        <input class="form-check-input" type="radio" name="Format"
+                               id="fmtXlsx" value="xlsx" checked />
+                        <label class="form-check-label d-flex align-items-center gap-2" for="fmtXlsx">
+                            <i class="bi bi-file-earmark-spreadsheet-fill text-success fs-5"></i>
+                            <span>Excel <span class="text-muted small">(.xlsx)</span></span>
+                        </label>
+                    </div>
+                    <div class="form-check format-radio">
+                        <input class="form-check-input" type="radio" name="Format"
+                               id="fmtCsv" value="csv" />
+                        <label class="form-check-label d-flex align-items-center gap-2" for="fmtCsv">
+                            <i class="bi bi-filetype-csv text-secondary fs-5"></i>
+                            <span>CSV <span class="text-muted small">(.csv)</span></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ms-auto">
+                <button type="submit" class="btn btn-primary btn-lg px-5" id="exportBtn">
+                    <i class="bi bi-download me-2"></i>Exportovať
+                </button>
+            </div>
+        </div>
+    </div>
+
+</form>
+
+} @* end else: group selected *@
+
+@section Styles {
+<style>
+.export-card { cursor: pointer; display: block; }
+.section-card {
+    transition: border-color .15s, box-shadow .15s;
+    border-color: #dee2e6 !important;
+    cursor: pointer;
+}
+.section-card.active {
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 3px rgba(13,110,253,.12);
+}
+.section-card.active .check-icon { color: #0d6efd !important; }
+.section-card.active .check-icon::before { content: "\F26B"; } /* check-circle-fill */
+.section-card:not(.active) .check-icon::before { content: "\F287"; } /* circle */
+.cursor-pointer { cursor: pointer; }
+.format-radio .form-check-label { cursor: pointer; }
+</style>
+}
+
+@section Scripts {
+<script>
+document.querySelectorAll('.section-cb').forEach(function(cb) {
+    var cardId = cb.dataset.card;
+    var card = document.querySelector('.section-card[data-card="' + cardId + '"]');
+    var icon = card.querySelector('.check-icon');
+
+    function sync() {
+        if (cb.checked) {
+            card.classList.add('active');
+            icon.className = 'bi bi-check-circle-fill ms-auto text-primary check-icon';
+            icon.style.fontSize = '1.2rem';
+        } else {
+            card.classList.remove('active');
+            icon.className = 'bi bi-circle ms-auto text-muted check-icon';
+            icon.style.fontSize = '1.2rem';
+        }
+    }
+
+    // Click anywhere on the card label toggles the checkbox
+    cb.closest('label').addEventListener('click', function(e) {
+        e.preventDefault();
+        cb.checked = !cb.checked;
+        sync();
+    });
+
+    sync(); // initial state
+});
+</script>
+}

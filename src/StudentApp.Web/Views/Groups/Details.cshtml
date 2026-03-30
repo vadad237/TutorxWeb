@@ -1,0 +1,71 @@
+@model GroupDetailsVm
+@{ ViewData["Title"] = Model.Name; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>@Model.Name</h2>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm">Upraviť</a>
+        <a asp-controller="Students" asp-action="Index" asp-route-groupId="@Model.Id" class="btn btn-outline-secondary btn-sm">Zobraziť študentov</a>
+        <a asp-controller="Students" asp-action="Import" asp-route-groupId="@Model.Id" class="btn btn-outline-success btn-sm">Importovať študentov</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Description))
+{
+    <p class="text-muted">@Model.Description</p>
+}
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">@Model.TotalStudents</h5>
+                <p class="card-text text-muted">Celkom študentov</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">@Model.ActiveStudents</h5>
+                <p class="card-text text-muted">Aktívni</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-danger">@Model.InactiveStudents</h5>
+                <p class="card-text text-muted">Neaktívni</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">@Model.CreatedAt.ToString("dd.MM.yyyy")</h5>
+                <p class="card-text text-muted">Vytvorená</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4>Študenti</h4>
+<table class="table table-striped">
+    <thead><tr><th>Meno</th><th>Email</th><th>Stav</th></tr></thead>
+    <tbody>
+        @foreach (var s in Model.Students)
+        {
+            <tr>
+                <td><a asp-controller="Students" asp-action="Details" asp-route-id="@s.Id">@s.FullName</a></td>
+                <td>@(s.Email ?? "-")</td>
+                <td>
+                    @if (s.IsActive) { <span class="badge bg-success">Aktívny</span> }
+                    else { <span class="badge bg-secondary">Neaktívny</span> }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a asp-action="Index" class="btn btn-secondary">Späť na skupiny</a>

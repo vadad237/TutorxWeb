@@ -1,0 +1,41 @@
+@model StudentCreateVm
+@{ ViewData["Title"] = "Pridať študenta"; }
+
+<h2>Pridať študenta do @ViewBag.GroupName</h2>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create" method="post">
+            <input type="hidden" asp-for="GroupId" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="mb-3">
+                <label asp-for="FirstName" class="form-label">Meno *</label>
+                <input asp-for="FirstName" class="form-control" required maxlength="100" autofocus />
+                <span asp-validation-for="FirstName" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="LastName" class="form-label">Priezvisko *</label>
+                <input asp-for="LastName" class="form-control" required maxlength="100" />
+                <span asp-validation-for="LastName" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label">Email</label>
+                <input asp-for="Email" class="form-control" type="email" maxlength="200" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="CardNumber" class="form-label">Číslo karty</label>
+                <input asp-for="CardNumber" class="form-control" maxlength="50" />
+                <span asp-validation-for="CardNumber" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Year" class="form-label">Ročník</label>
+                <input asp-for="Year" class="form-control" type="number" min="1" max="10" />
+                <span asp-validation-for="Year" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Pridať študenta</button>
+            <a asp-action="Index" asp-route-groupId="@Model.GroupId" class="btn btn-secondary">Zrušiť</a>
+        </form>
+    </div>
+</div>

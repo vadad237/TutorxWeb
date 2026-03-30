@@ -1,0 +1,123 @@
+/* ─── Shared slot-machine animation styles ─── */
+
+.slot-outer {
+    position: relative;
+    width: clamp(280px, 60vw, 440px);
+    margin: 0 auto;
+}
+
+.slot-display {
+    width: 100%;
+    height: 96px;
+    border: 3px solid #0d6efd;
+    border-radius: 18px;
+    background: linear-gradient(145deg, #0d1b2a, #1a2d4a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 0 24px rgba(13, 110, 253, 0.45);
+    transition: border-color .3s, box-shadow .3s, background .3s;
+}
+
+.slot-display.locked {
+    border-color: #198754;
+    box-shadow: 0 0 50px rgba(25, 135, 84, .8), 0 0 100px rgba(25, 135, 84, .3);
+    background: linear-gradient(145deg, #0a2e1a, #0f3d22);
+}
+
+.slot-name {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: .03em;
+    text-align: center;
+    padding: 0 1.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    transition: color .2s;
+}
+
+.slot-display.locked .slot-name {
+    color: #6ee7a0;
+    animation: slotPop .4s cubic-bezier(.36, .07, .19, .97);
+}
+
+.slot-display.spinning .slot-name {
+    animation: slotFlicker .08s infinite alternate;
+}
+
+/* Edge fade on drum */
+.slot-outer::before,
+.slot-outer::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 28px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.slot-outer::before {
+    top: 0;
+    background: linear-gradient(to bottom, rgba(13, 27, 42, .9), transparent);
+    border-radius: 18px 18px 0 0;
+}
+
+.slot-outer::after {
+    bottom: 0;
+    background: linear-gradient(to top, rgba(13, 27, 42, .9), transparent);
+    border-radius: 0 0 18px 18px;
+}
+
+@keyframes slotFlicker {
+    from { opacity: .85; }
+    to   { opacity: 1;   }
+}
+
+@keyframes slotPop {
+    0%   { transform: scale(.8);   opacity: 0; }
+    60%  { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1);    opacity: 1; }
+}
+
+/* Revealed student pill badges */
+.student-card {
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #0d6efd, #0a58ca);
+    color: #fff;
+    border-radius: 50px;
+    font-size: 1.15rem;
+    font-weight: 600;
+    box-shadow: 0 4px 18px rgba(13, 110, 253, .4);
+    opacity: 0;
+    transform: translateY(16px) scale(.9);
+    transition: opacity .5s ease, transform .5s ease;
+}
+
+.student-card.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* Dot spinner (waiting state) */
+.dot-spinner span {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #6c757d;
+    margin: 0 4px;
+    animation: dotBounce 1.2s infinite ease-in-out both;
+}
+
+.dot-spinner span:nth-child(1) { animation-delay: -.32s; }
+.dot-spinner span:nth-child(2) { animation-delay: -.16s; }
+
+@keyframes dotBounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40%           { transform: scale(1); }
+}

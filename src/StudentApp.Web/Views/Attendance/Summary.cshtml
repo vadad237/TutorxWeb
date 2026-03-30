@@ -1,0 +1,48 @@
+@model AttendanceSummaryVm
+@{ ViewData["Title"] = "Súhrn dochádzky"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Súhrn dochádzky &mdash; @Model.GroupName</h2>
+    <div>
+        <a asp-action="Record" asp-route-groupId="@Model.GroupId" class="btn btn-primary btn-sm">Záznam</a>
+        <a asp-action="History" asp-route-groupId="@Model.GroupId" class="btn btn-outline-secondary btn-sm">História</a>
+    </div>
+</div>
+
+<table class="table table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>Študent</th>
+            <th class="text-center">Prítomný</th>
+            <th class="text-center">Neprítomný</th>
+            <th class="text-center">Ospravedlnený</th>
+            <th class="text-center">Celkom</th>
+            <th class="text-center">Dochádzka %</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Items)
+        {
+            <tr>
+                <td><a asp-controller="Students" asp-action="Details" asp-route-id="@item.StudentId">@item.FullName</a></td>
+                <td class="text-center"><span class="badge bg-success">@item.PresentCount</span></td>
+                <td class="text-center"><span class="badge bg-danger">@item.AbsentCount</span></td>
+                <td class="text-center"><span class="badge bg-warning text-dark">@item.ExcusedCount</span></td>
+                <td class="text-center">@item.TotalCount</td>
+                <td class="text-center">
+                    <div class="progress" style="min-width:80px;">
+                        <div class="progress-bar @(item.AttendancePercentage >= 80 ? "bg-success" : item.AttendancePercentage >= 50 ? "bg-warning" : "bg-danger")"
+                             style="width: @item.AttendancePercentage%">
+                            @item.AttendancePercentage%
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (!Model.Items.Any())
+{
+    <div class="alert alert-info">Žiadne údaje o dochádzke na zhrnutie.</div>
+}

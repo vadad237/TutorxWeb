@@ -1,0 +1,147 @@
+@model List<GroupSummaryVm>
+@{
+    ViewData["Title"] = "Skupiny";
+    var showArchived = (bool)(ViewBag.ShowArchived ?? false);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Skupiny</h2>
+    <div>
+        <a asp-action="Index" asp-route-showArchived="@(!showArchived)" class="btn btn-outline-secondary btn-sm me-2">
+            @(showArchived ? "Skryť archivované" : "Zobraziť archivované")
+        </a>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Nová skupina
+        </a>
+    </div>
+</div>
+
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Názov</th>
+            <th>Študenti</th>
+            <th>Aktívni</th>
+            <th>Vytvorená</th>
+            <th>Akcie</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var g in Model)
+        {
+            <tr class="@(g.IsArchived ? "table-secondary" : "")">
+                <td>
+                    <a asp-action="Details" asp-route-id="@g.Id">@g.Name</a>
+                    @if (g.IsArchived) { <span class="badge bg-secondary ms-1">Archivovaná</span> }
+                </td>
+                <td>@g.StudentCount</td>
+                <td>@g.ActiveStudentCount</td>
+                <td>@g.CreatedAt.ToString("dd.MM.yyyy")</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a asp-action="Edit" asp-route-id="@g.Id" class="btn btn-sm btn-icon btn-outline-primary"
+                           data-bs-toggle="tooltip" title="Upraviť">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        @if (!g.IsArchived)
+                        {
+                            <button type="button" class="btn btn-sm btn-icon btn-outline-secondary btn-archive"
+                                    data-bs-toggle="tooltip" title="Archivovať"
+                                    data-id="@g.Id" data-name="@g.Name">
+                                <i class="bi bi-archive"></i>
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-sm btn-icon btn-outline-success btn-unarchive"
+                                    data-bs-toggle="tooltip" title="Zrušiť archív"
+                                    data-id="@g.Id" data-name="@g.Name">
+                                <i class="bi bi-archive-fill"></i>
+                            </button>
+                        }
+                        <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-delete"
+                                data-bs-toggle="tooltip" title="Vymazať"
+                                data-id="@g.Id" data-name="@g.Name" data-students="@g.StudentCount">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Žiadne skupiny. Vytvorte svoju prvú skupinu.</div>
+}
+
+@section Scripts {
+<script>
+(function() {
+    function confirmAction(title, body, onConfirm) {
+        document.getElementById('confirmModalTitle').textContent = title;
+        document.getElementById('confirmModalBody').textContent = body;
+        var modalEl = document.getElementById('confirmModal');
+        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        var actionBtn = document.getElementById('confirmModalAction');
+        var newBtn = actionBtn.cloneNode(true);
+        actionBtn.parentNode.replaceChild(newBtn, actionBtn);
+        newBtn.addEventListener('click', function() {
+            modal.hide();
+            onConfirm();
+        });
+        modal.show();
+    }
+
+    document.querySelectorAll('.btn-delete').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.dataset.id;
+            var name = this.dataset.name;
+            var students = parseInt(this.dataset.students) || 0;
+            var msg = 'Natárvalo vymazať "' + name + '"? Túto akciu nemožno vrátiť.';
+            if (students > 0)
+                msg += '\n\n⚠ Týmto sa tiež vymaže ' + students + ' študent' + (students > 1 ? 'ov' : '') + ' a všetky ich zadania, hodnotenia, záznamy dochádzky a história žrebovania.';
+            confirmAction('Vymazať skupinu', msg, function() {
+                fetch('/Groups/Delete/' + id, { method: 'POST' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        if (d.success) location.reload();
+                        else alert(d.message);
+                    });
+            });
+        });
+    });
+
+    document.querySelectorAll('.btn-unarchive').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.dataset.id;
+            var name = this.dataset.name;
+            confirmAction('Zrušiť archív skupiny', 'Obnoviť "' + name + '" z archívu?', function() {
+                fetch('/Groups/Unarchive/' + id, { method: 'POST' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        if (d.success) location.reload();
+                        else alert(d.message);
+                    });
+            });
+        });
+    });
+
+    document.querySelectorAll('.btn-archive').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.dataset.id;
+            var name = this.dataset.name;
+            confirmAction('Archivovať skupinu', 'Naozaj chcete archivovať "' + name + '"?', function() {
+                fetch('/Groups/Archive/' + id, { method: 'POST' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        if (d.success) location.reload();
+                        else alert(d.message);
+                    });
+            });
+        });
+    });
+})();
+</script>
+}

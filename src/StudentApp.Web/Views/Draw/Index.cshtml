@@ -1,0 +1,110 @@
+@model DrawIndexVm
+@{
+    ViewData["Title"] = "Žrebovanie";
+    bool noGroup = (bool?)ViewBag.NoGroupSelected == true;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var activitiesJson = System.Text.Json.JsonSerializer.Serialize(
+        Model?.Activities ?? new List<DrawActivityVm>());
+    var allNamesJson = System.Text.Json.JsonSerializer.Serialize(
+        Model?.AllActiveStudentNames ?? new List<string>());
+    var initialIdsJson = System.Text.Json.JsonSerializer.Serialize(
+        (ViewBag.InitialActivityIds as List<int>) ?? new List<int>());
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/slot-machine.css" asp-append-version="true" />
+    <style>
+        /* Compact slot drum inside draw cards */
+        .slot-outer-compact {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        .slot-outer-compact .slot-display {
+            height: 68px;
+        }
+        .slot-outer-compact .slot-name {
+            font-size: 1.35rem;
+        }
+        .slot-outer-compact::before,
+        .slot-outer-compact::after {
+            height: 16px;
+        }
+
+        /* Draw card glow states */
+        .draw-card-inner { transition: box-shadow .2s; }
+
+        /* Result pills inside cards */
+        .card-results-list .student-card {
+            padding: 6px 16px;
+            font-size: 0.9rem;
+        }
+
+        /* Add card placeholder */
+        #add-card-placeholder {
+            border: 2px dashed #dee2e6;
+            border-radius: .5rem;
+            background: transparent;
+            transition: border-color .15s, background .15s;
+            cursor: pointer;
+            min-height: 80px;
+        }
+        #add-card-placeholder:hover {
+            border-color: #0d6efd;
+            background: rgba(13,110,253,.04);
+        }
+    </style>
+}
+
+@if (noGroup)
+{
+    <partial name="_NoGroupSelected" />
+}
+@{ if (noGroup) return; }
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">Žrebovanie</h2>
+    <div class="d-flex align-items-center gap-2">
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                @Model.GroupName
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                @foreach (var g in Model.AllGroups)
+                {
+                    <li>
+                        <a class="dropdown-item @(g.Id == Model.GroupId ? "active" : "")"
+                           asp-action="Index" asp-route-groupId="@g.Id">@g.Name</a>
+                    </li>
+                }
+            </ul>
+        </div>
+        <a asp-action="History" asp-route-groupId="@Model.GroupId" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-clock-history me-1"></i>História
+        </a>
+    </div>
+</div>
+
+<!-- Toolbar -->
+<div class="d-flex align-items-center gap-2 mb-3">
+    <button id="add-card-btn" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Pridať žrebovanie
+    </button>
+    <button id="draw-all-btn" class="btn btn-primary btn-sm px-4" disabled>
+        <i class="bi bi-shuffle me-2"></i>Žrebovať všetko
+    </button>
+</div>
+
+<!-- Hidden data for JS -->
+<div id="draw-data"
+     data-all-names='@Html.Raw(allNamesJson)'
+     data-activities='@Html.Raw(activitiesJson)'
+     data-initial-ids='@Html.Raw(initialIdsJson)'
+     style="display:none"></div>
+
+<!-- Cards grid – populated by JS -->
+<div class="row g-3" id="draw-cards"></div>
+
+@section Scripts {
+<script src="/js/draw.js"></script>
+}

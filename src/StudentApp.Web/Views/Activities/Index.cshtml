@@ -1,0 +1,273 @@
+@model List<ActivitySummaryVm>
+@{ViewData["Title"] = "Aktivity";}
+
+@if ((bool?)ViewBag.NoGroupSelected == true)
+{
+    <partial name="_NoGroupSelected" />
+}
+else
+{
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Aktivity</h2>
+    <div class="d-flex align-items-center gap-2">
+        <span id="selectionCount" class="text-muted small d-none">0 vybraných</span>
+        <button type="button" class="btn btn-sm btn-outline-success" id="bulkAssignBtn" disabled>
+            <i class="bi bi-shuffle me-1"></i>Auto-priradenie
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkDrawBtn" disabled>
+            <i class="bi bi-dice-3 me-1"></i>Žrebovanie
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger" id="bulkDeleteBtn" disabled>
+            <i class="bi bi-trash me-1"></i>Vymazať
+        </button>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Nová aktivita
+        </a>
+    </div>
+</div>
+
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th style="width:2.5rem">
+                <input type="checkbox" id="selectAll" class="form-check-input" title="Označiť všetko" />
+            </th>
+            <th>Názov</th>
+            <th>Úlohy</th>
+            <th>Priradení študenti</th>
+            <th>Akcie</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var a in Model)
+        {
+            <tr>
+                <td>
+                    <input type="checkbox" class="form-check-input row-check" value="@a.Id" data-name="@a.Name" />
+                </td>
+                <td><a asp-action="Details" asp-route-id="@a.Id">@a.Name</a></td>
+                <td>@a.TaskCount</td>
+                <td>
+                    @if (a.AssignedStudents.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (var name in a.AssignedStudents)
+                            {
+                                <span class="badge bg-info text-dark">@name</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text-muted">-</span>
+                    }
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a asp-action="Details" asp-route-id="@a.Id" class="btn btn-sm btn-icon btn-outline-info"
+                           data-bs-toggle="tooltip" title="Detaily">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-icon btn-outline-primary"
+                           data-bs-toggle="tooltip" title="Upraviť">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-icon btn-outline-secondary btn-duplicate-activity"
+                                data-bs-toggle="tooltip" title="Duplikovať"
+                                data-id="@a.Id" data-name="@a.Name">
+                            <i class="bi bi-copy"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-delete-activity"
+                                title="Vymazať"
+                                data-id="@a.Id" data-name="@a.Name">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Žiadne aktivity. Vytvorte svoju prvú aktivitu.</div>
+}
+
+}
+
+@section Scripts {
+<script>
+(function () {
+    var selectAll = document.getElementById('selectAll');
+    if (!selectAll) return;
+    var countLabel    = document.getElementById('selectionCount');
+    var bulkAssignBtn = document.getElementById('bulkAssignBtn');
+    var bulkDrawBtn   = document.getElementById('bulkDrawBtn');
+    var bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+
+    function getChecked() {
+        return Array.from(document.querySelectorAll('.row-check:checked'));
+    }
+
+    function updateToolbar() {
+        var checked = getChecked();
+        var count = checked.length;
+        var hasSelection = count > 0;
+        countLabel.textContent = count + ' vybraných';
+        countLabel.classList.toggle('d-none', !hasSelection);
+        bulkAssignBtn.disabled = !hasSelection;
+        bulkDrawBtn.disabled   = !hasSelection;
+        bulkDeleteBtn.disabled = !hasSelection;
+        var total = document.querySelectorAll('.row-check').length;
+        selectAll.checked = count === total && total > 0;
+        selectAll.indeterminate = count > 0 && count < total;
+    }
+
+    selectAll.addEventListener('change', function () {
+        document.querySelectorAll('.row-check').forEach(function (cb) {
+            cb.checked = selectAll.checked;
+        });
+        updateToolbar();
+    });
+
+    document.querySelectorAll('.row-check').forEach(function (cb) {
+        cb.addEventListener('change', updateToolbar);
+    });
+
+    // Bulk auto-assign: POST all selected activity IDs in one request, then reload
+    bulkAssignBtn.addEventListener('click', function () {
+        var checked = getChecked();
+        if (checked.length === 0) return;
+        var names = checked.map(function (cb) { return cb.dataset.name; }).join(', ');
+        var msg = checked.length === 1
+            ? 'Auto-priradiť študentov k "' + names + '"?'
+            : 'Rovnomerne rozložiť študentov medzi ' + checked.length + ' aktivít: ' + names + '?';
+        var modalEl  = document.getElementById('confirmModal');
+        var modal    = bootstrap.Modal.getOrCreateInstance(modalEl);
+        document.getElementById('confirmModalTitle').textContent = 'Auto-priradenie';
+        document.getElementById('confirmModalBody').textContent  = msg + ' Týmto sa prepíšu existujúce priradenia.';
+        var actionBtn = document.getElementById('confirmModalAction');
+        var newBtn = actionBtn.cloneNode(true);
+        actionBtn.parentNode.replaceChild(newBtn, actionBtn);
+        newBtn.addEventListener('click', function () {
+            modal.hide();
+            var ids = checked.map(function (cb) { return parseInt(cb.value); });
+            bulkAssignBtn.disabled = true;
+            fetch('/Activities/BulkAssign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(ids)
+            }).then(function (r) {
+                if (!r.ok) {
+                    r.text().then(function (t) { alert('Auto-priradenie zlyhalo: ' + t); });
+                    bulkAssignBtn.disabled = false;
+                } else {
+                    location.reload();
+                }
+            }).catch(function (err) {
+                alert('Chyba auto-priradenia: ' + err);
+                bulkAssignBtn.disabled = false;
+            });
+        });
+        modal.show();
+    });
+
+    // Delete activity
+    document.querySelectorAll('.btn-delete-activity').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id   = this.dataset.id;
+            var name = this.dataset.name;
+            var modalEl  = document.getElementById('confirmModal');
+            var modal    = bootstrap.Modal.getOrCreateInstance(modalEl);
+            document.getElementById('confirmModalTitle').textContent = 'Vymazať aktivitu';
+            document.getElementById('confirmModalBody').textContent  =
+                'Natárvalo vymazať "' + name + '" a všetky jej úlohy, priradenia a hodnotenia? Túto akciu nemožno vrátiť.';
+            var actionBtn = document.getElementById('confirmModalAction');
+            var newBtn = actionBtn.cloneNode(true);
+            actionBtn.parentNode.replaceChild(newBtn, actionBtn);
+            newBtn.addEventListener('click', function () {
+                modal.hide();
+                fetch('/Activities/Delete/' + id, { method: 'POST' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d.success) location.reload();
+                        else alert(d.message);
+                    })
+                    .catch(function () { alert('Vymazanie zlyhalo.'); });
+            });
+            modal.show();
+        });
+    });
+
+    // Duplicate activity
+    document.querySelectorAll('.btn-duplicate-activity').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id   = this.dataset.id;
+            var name = this.dataset.name;
+            var modalEl  = document.getElementById('confirmModal');
+            var modal    = bootstrap.Modal.getOrCreateInstance(modalEl);
+            document.getElementById('confirmModalTitle').textContent = 'Duplikovať aktivitu';
+            document.getElementById('confirmModalBody').textContent  =
+                'Vytvoriť kópiu "' + name + '" so všetkými úlohami, prezentáciami a atribútmi?';
+            var actionBtn = document.getElementById('confirmModalAction');
+            var newBtn = actionBtn.cloneNode(true);
+            actionBtn.parentNode.replaceChild(newBtn, actionBtn);
+            newBtn.addEventListener('click', function () {
+                modal.hide();
+                fetch('/Activities/Duplicate/' + id, { method: 'POST' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d.success) location.reload();
+                        else alert(d.message || 'Duplikovanie zlyhalo.');
+                    })
+                    .catch(function () { alert('Duplikovanie zlyhalo.'); });
+            });
+            modal.show();
+        });
+    });
+
+    // Bulk delete: delete all selected activities
+    bulkDeleteBtn.addEventListener('click', function () {
+        var checked = getChecked();
+        if (checked.length === 0) return;
+        var names = checked.map(function (cb) { return cb.dataset.name; }).join(', ');
+        var msg = checked.length === 1
+            ? 'Natárvalo vymazať "' + names + '" a všetky jej úlohy, priradenia a hodnotenia?'
+            : 'Natárvalo vymazať ' + checked.length + ' aktivít: ' + names + '?\nVšetky úlohy, priradenia a hodnotenia budú odstránené.';
+        var modalEl  = document.getElementById('confirmModal');
+        var modal    = bootstrap.Modal.getOrCreateInstance(modalEl);
+        document.getElementById('confirmModalTitle').textContent = 'Vymazať aktivity';
+        document.getElementById('confirmModalBody').textContent  = msg + ' Túto akciu nemožno vrátiť.';
+        var actionBtn = document.getElementById('confirmModalAction');
+        var newBtn = actionBtn.cloneNode(true);
+        actionBtn.parentNode.replaceChild(newBtn, actionBtn);
+        newBtn.addEventListener('click', function () {
+            modal.hide();
+            var ids = checked.map(function (cb) { return parseInt(cb.value); });
+            bulkDeleteBtn.disabled = true;
+            fetch('/Activities/BulkDelete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(ids)
+            }).then(function (r) { return r.json(); })
+              .then(function (d) {
+                  if (d.success) location.reload();
+                  else alert(d.message || 'Vymazanie zlyhalo.');
+              })
+              .catch(function () { alert('Vymazanie zlyhalo.'); });
+        });
+        modal.show();
+    });
+
+    // Draw: navigate to the Draw page with all selected activity IDs pre-populated
+    bulkDrawBtn.addEventListener('click', function () {
+        var checked = getChecked();
+        if (checked.length === 0) return;
+        var ids = checked.map(function (cb) { return cb.value; }).join(',');
+        window.location.href = '/Draw?activityIds=' + ids;
+    });
+})();
+</script>
+}

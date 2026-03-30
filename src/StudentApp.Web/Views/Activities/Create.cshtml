@@ -1,0 +1,29 @@
+@model ActivityCreateVm
+@{ ViewData["Title"] = "Vytvoriť aktivitu"; }
+
+<h2>Vytvoriť aktivitu</h2>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+            <input type="hidden" asp-for="GroupId" />
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">Názov aktivity *</label>
+                <input asp-for="Name" class="form-control" required maxlength="200" autofocus />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">Popis</label>
+                <textarea asp-for="Description" class="form-control" rows="3" maxlength="1000"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Skupina</label>
+                <input type="text" class="form-control" value="@Model.GroupName" disabled />
+            </div>
+            <button type="submit" class="btn btn-primary">Vytvoriť</button>
+            <a asp-action="Index" class="btn btn-secondary">Zrušiť</a>
+        </form>
+    </div>
+</div>

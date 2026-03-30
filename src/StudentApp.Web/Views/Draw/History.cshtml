@@ -1,0 +1,63 @@
+@model DrawHistoryVm
+@{ ViewData["Title"] = "História žrebovania"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>História žrebovania &mdash; @Model.GroupName</h2>
+    <a asp-action="Index" asp-route-groupId="@Model.GroupId" class="btn btn-primary">Späť na žrebovanie</a>
+</div>
+
+<table class="table table-striped table-hover align-middle">
+    <thead class="table-dark">
+        <tr>
+            <th>#</th>
+            <th>Aktivita</th>
+            <th>Žrebovaní študenti</th>
+            <th>Dátum a čas</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{ var idx = (Model.CurrentPage - 1) * 25 + 1; }
+        @foreach (var b in Model.Batches)
+        {
+            <tr>
+                <td>@(idx++)</td>
+                <td>
+                    @if (b.ActivityName != null)
+                    {
+                        <span class="badge bg-primary">@b.ActivityName</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted fst-italic">Žreb z vreca</span>
+                    }
+                </td>
+                <td>
+                    @foreach (var name in b.StudentNames)
+                    {
+                        <span class="badge bg-secondary me-1">@name</span>
+                    }
+                </td>
+                <td class="text-nowrap">@b.DrawnAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (!Model.Batches.Any())
+{
+    <div class="alert alert-info">Žiadna história žrebovania pre túto skupinu.</div>
+}
+
+@if (Model.TotalPages > 1)
+{
+    <nav>
+        <ul class="pagination">
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                    <a class="page-link" asp-action="History" asp-route-groupId="@Model.GroupId" asp-route-page="@i">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

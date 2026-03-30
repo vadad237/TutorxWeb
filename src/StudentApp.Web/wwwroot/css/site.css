@@ -1,0 +1,65 @@
+/* Sidebar */
+#sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 220px;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+#content {
+    margin-left: 220px;
+    min-height: 100vh;
+}
+
+@media (max-width: 991.98px) {
+    #sidebar {
+        display: none;
+    }
+    #content {
+        margin-left: 0;
+    }
+}
+
+#sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+#sidebar .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+/* Status badges */
+.badge-present { background-color: #198754; }
+.badge-absent { background-color: #dc3545; }
+.badge-excused { background-color: #ffc107; color: #000; }
+.badge-none { background-color: #6c757d; }
+
+/* Table action buttons — rounded corners and spacing */
+td .btn-group,
+td .btn-group-sm {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+td .btn-group > .btn,
+td .btn-group-sm > .btn,
+td .btn-group > form > .btn,
+td .btn-group-sm > form > .btn {
+    border-radius: 6px !important;
+}
+
+/* Draw animation */
+@keyframes drawPulse {
+    0% { transform: scale(1.0); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1.0); }
+}
+.draw-pulse {
+    animation: drawPulse 0.5s ease-in-out;
+}

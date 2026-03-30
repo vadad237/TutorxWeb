@@ -1,0 +1,26 @@
+@model GroupEditVm
+@{ ViewData["Title"] = "Upraviť skupinu"; }
+
+<h2>Upraviť skupinu</h2>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+            <input type="hidden" asp-for="Id" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">Názov skupiny *</label>
+                <input asp-for="Name" class="form-control" required maxlength="100" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">Popis</label>
+                <textarea asp-for="Description" class="form-control" rows="3" maxlength="500"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Uložiť</button>
+            <a asp-action="Index" class="btn btn-secondary">Zrušiť</a>
+        </form>
+    </div>
+</div>

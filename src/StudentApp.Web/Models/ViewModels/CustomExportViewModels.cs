@@ -1,0 +1,20 @@
+namespace StudentApp.Web.Models.ViewModels;
+
+public class CustomExportRequestVm
+{
+    public int GroupId { get; set; }
+    public bool IncludeStudents { get; set; } = true;
+    public bool IncludeAttendance { get; set; }
+    public bool IncludeActivities { get; set; }
+    public bool IncludeTasks { get; set; }
+    public bool IncludePresentations { get; set; }
+    public bool IncludeOtherAttributes { get; set; }
+    public string Format { get; set; } = "xlsx";
+}
+
+public class CustomExportIndexVm
+{
+    public int GroupId { get; set; }
+    public string GroupName { get; set; } = null!;
+    public CustomExportRequestVm Request { get; set; } = new();
+}

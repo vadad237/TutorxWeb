@@ -1,0 +1,100 @@
+@model AttendanceRecordVm
+@{ ViewData["Title"] = "Zaznamenávať dochádzku"; }
+
+@if ((bool?)ViewBag.NoGroupSelected == true)
+{
+    <partial name="_NoGroupSelected" />
+}
+@{ if ((bool?)ViewBag.NoGroupSelected == true) return; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Zaznamenávať dochádzku &mdash; @Model.GroupName</h2>
+    <div>
+        <a asp-action="History" asp-route-groupId="@Model.GroupId" class="btn btn-outline-secondary btn-sm">História</a>
+        <a asp-action="Summary" asp-route-groupId="@Model.GroupId" class="btn btn-outline-info btn-sm">Súhrn</a>
+    </div>
+</div>
+
+<form asp-action="Record" method="post">
+    <input type="hidden" asp-for="GroupId" />
+    <input type="hidden" asp-for="GroupName" />
+
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label asp-for="Date" class="form-label">Dátum</label>
+            <input asp-for="Date" type="date" class="form-control" id="dateInput"
+                   max="@DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd")" />
+        </div>
+    </div>
+
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Študent</th>
+                <th>Prítomný</th>
+                <th>Neprítomný</th>
+                <th>Ospravedlnený</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < Model.Rows.Count; i++)
+            {
+                var row = Model.Rows[i];
+                <tr>
+                    <td>
+                        <input type="hidden" name="Rows[@i].StudentId" value="@row.StudentId" />
+                        <input type="hidden" name="Rows[@i].FullName" value="@row.FullName" />
+                        @row.FullName
+                    </td>
+                    <td>
+                        <input type="radio" name="Rows[@i].Status" value="Present"
+                               class="form-check-input" @(row.Status == AttendanceStatus.Present ? "checked" : "") />
+                    </td>
+                    <td>
+                        <input type="radio" name="Rows[@i].Status" value="Absent"
+                               class="form-check-input" @(row.Status == AttendanceStatus.Absent ? "checked" : "") />
+                    </td>
+                    <td>
+                        <input type="radio" name="Rows[@i].Status" value="Excused"
+                               class="form-check-input" @(row.Status == AttendanceStatus.Excused ? "checked" : "") />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (!Model.Rows.Any())
+    {
+        <div class="alert alert-warning">Žiadni aktívni študenti v tejto skupine.</div>
+    }
+</form>
+
+@section Scripts {
+<script>
+document.getElementById('dateInput').addEventListener('change', function() {
+    var gid = @Model.GroupId;
+    var date = this.value;
+    window.location.href = '/Attendance/Record?groupId=' + gid + '&date=' + date;
+});
+
+var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+document.querySelectorAll('input[type="radio"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        var studentId = this.closest('tr').querySelector('input[type="hidden"][name$=".StudentId"]').value;
+        var status = this.value;
+        var params = new URLSearchParams({
+            groupId: '@Model.GroupId',
+            date: '@Model.Date.ToString("yyyy-MM-dd")',
+            studentId: studentId,
+            status: status,
+            __RequestVerificationToken: token
+        });
+        fetch('/Attendance/SaveSingle', { method: 'POST', body: params })
+            .then(function(r) {
+                if (!r.ok) console.error('Failed to save attendance');
+            });
+    });
+});
+</script>
+}

@@ -1,0 +1,26 @@
+@model ImportUploadVm
+@{ ViewData["Title"] = "Importovať študentov"; }
+
+<h2>Importovať študentov do @Model.GroupName</h2>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5>Nahrať súbor</h5>
+                <p class="text-muted">Podporované formáty: CSV (.csv) a Excel (.xlsx)</p>
+                <p class="text-muted">Povinné stĺpce: FirstName (alebo Meno), LastName (alebo Priezvisko). Voliteľné: Email</p>
+
+                <form asp-action="ImportPreview" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="groupId" value="@Model.GroupId" />
+                    <div class="mb-3">
+                        <input type="file" name="file" class="form-control" accept=".csv,.xlsx" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Nahrať a zobraziť náhľad</button>
+                    <a asp-action="Index" asp-route-groupId="@Model.GroupId" class="btn btn-secondary">Zrušiť</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
