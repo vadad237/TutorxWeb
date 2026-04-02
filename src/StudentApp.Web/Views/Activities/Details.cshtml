@@ -131,7 +131,15 @@ else
     </div>
 </div>
 
-<h4>Prezentácie (@Model.Presentations.Count)</h4>
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h4 class="mb-0">Prezentácie (@Model.Presentations.Count)</h4>
+    <div id="presSelectionToolbar" class="d-flex align-items-center gap-2">
+        <span id="presSelectionCount" class="text-muted small"></span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="presDrawBtn" disabled>
+            <i class="bi bi-dice-3 me-1"></i>Žrebovanie
+        </button>
+    </div>
+</div>
 
 @if (!Model.Presentations.Any())
 {
@@ -142,7 +150,10 @@ else
     <table class="table table-striped align-middle" id="presTable">
         <thead class="table-dark">
             <tr>
-                <th style="width:30%">Názov</th>
+                <th style="width:2.5rem">
+                    <input type="checkbox" id="presSelectAll" class="form-check-input" title="Označiť všetko" />
+                </th>
+                <th style="width:28%">Názov</th>
                 <th style="width:18%">Dátum</th>
                 <th>Študenti</th>
                 <th style="width:90px">Akcie</th>
@@ -152,6 +163,9 @@ else
         @foreach (var p in Model.Presentations)
         {
             <tr>
+                <td>
+                    <input type="checkbox" class="form-check-input pres-row-check" value="@p.TaskId" data-name="@p.Title" />
+                </td>
                 <td>
                     <input type="text" class="form-control form-control-sm pres-title-input"
                            data-id="@p.TaskId" value="@p.Title" maxlength="300" />
@@ -203,9 +217,16 @@ else
                     </div>
                 </td>
                 <td>
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-delete-task" data-id="@p.TaskId">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary btn-draw-pres"
+                                data-id="@p.TaskId" title="Žrebovanie">
+                            <i class="bi bi-dice-3"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-delete-task" data-id="@p.TaskId"
+                                title="Vymazať">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         }
@@ -733,5 +754,52 @@ document.querySelectorAll('.pres-student-dropdown').forEach(function(dropdown) {
         });
     });
 });
+
+// ── Per-row presentation draw ─────────────────────────────────────────────
+document.querySelectorAll('.btn-draw-pres').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        window.location.href = '/Draw?presentationIds=' + this.dataset.id;
+    });
+});
+
+// ── Presentation selection & draw navigation ──────────────────────────────
+(function () {
+    var presSelectAll = document.getElementById('presSelectAll');
+    if (!presSelectAll) return;
+    var countLabel   = document.getElementById('presSelectionCount');
+    var presDrawBtn  = document.getElementById('presDrawBtn');
+
+    function getPresChecked() {
+        return Array.from(document.querySelectorAll('.pres-row-check:checked'));
+    }
+
+    function updatePresToolbar() {
+        var checked = getPresChecked();
+        var count = checked.length;
+        countLabel.textContent = count > 0 ? count + ' vybraných' : '';
+        presDrawBtn.disabled = count === 0;
+        var total = document.querySelectorAll('.pres-row-check').length;
+        presSelectAll.checked = count === total && total > 0;
+        presSelectAll.indeterminate = count > 0 && count < total;
+    }
+
+    presSelectAll.addEventListener('change', function () {
+        document.querySelectorAll('.pres-row-check').forEach(function (cb) {
+            cb.checked = presSelectAll.checked;
+        });
+        updatePresToolbar();
+    });
+
+    document.querySelectorAll('.pres-row-check').forEach(function (cb) {
+        cb.addEventListener('change', updatePresToolbar);
+    });
+
+    presDrawBtn.addEventListener('click', function () {
+        var checked = getPresChecked();
+        if (checked.length === 0) return;
+        var ids = checked.map(function (cb) { return cb.value; }).join(',');
+        window.location.href = '/Draw?presentationIds=' + ids;
+    });
+})();
 </script>
 }

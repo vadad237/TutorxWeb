@@ -1,6 +1,6 @@
 @model DrawResultVm
 @{
-    ViewData["Title"] = "Žrebovanie – " + Model.ActivityName;
+    ViewData["Title"] = "Žrebovanie – " + Model.SourceName;
     var drawnJson = System.Text.Json.JsonSerializer.Serialize(Model.DrawnStudentNames);
     var allJson   = System.Text.Json.JsonSerializer.Serialize(Model.AllStudentNames);
 }
@@ -31,7 +31,11 @@
 
     <!-- Header -->
     <div class="text-center">
-        <h2 class="mb-0">@Model.ActivityName</h2>
+        <h2 class="mb-0">@Model.SourceName</h2>
+        <div class="d-flex justify-content-center gap-3 mt-1">
+            <span class="text-muted small"><strong>Aktivita:</strong> @Model.ActivityName</span>
+            <span class="badge bg-secondary align-self-center">@Model.DrawTypeName</span>
+        </div>
     </div>
 
     <!-- Drum -->

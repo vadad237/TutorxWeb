@@ -2,13 +2,16 @@ document.addEventListener('DOMContentLoaded', function () {
     var drawData     = document.getElementById('draw-data');
     var cardsGrid    = document.getElementById('draw-cards');
     var addCardBtn   = document.getElementById('add-card-btn');
+    var addPresCardBtn = document.getElementById('add-pres-card-btn');
     var drawAllBtn   = document.getElementById('draw-all-btn');
 
     if (!drawData || !cardsGrid) return;
 
-    var allNames      = JSON.parse(drawData.dataset.allNames  || '[]');
-    var activities    = JSON.parse(drawData.dataset.activities || '[]');
-    var initialIds    = JSON.parse(drawData.dataset.initialIds || '[]');
+    var allNames        = JSON.parse(drawData.dataset.allNames  || '[]');
+    var activities      = JSON.parse(drawData.dataset.activities || '[]');
+    var initialIds      = JSON.parse(drawData.dataset.initialIds || '[]');
+    var presentations   = JSON.parse(drawData.dataset.presentations || '[]');
+    var initialPresIds  = JSON.parse(drawData.dataset.initialPresIds || '[]');
 
     var cardCounter   = 0;
     var isDrawingAll  = false;
@@ -31,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Global toolbar state ──────────────────────────────────────────────────
     function updateAllButtons() {
-        var hasValid = Array.from(cardsGrid.querySelectorAll('.card-activity-select'))
+        var hasValid = Array.from(cardsGrid.querySelectorAll('.card-item-select'))
             .some(function (sel) { return sel.value !== ''; });
         if (drawAllBtn) drawAllBtn.disabled = isDrawingAll || !hasValid;
 
@@ -41,41 +44,55 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ── Card creation ─────────────────────────────────────────────────────────
-    function createCard(preselectedActivityId) {
+    // type: 'activity' | 'presentation'
+    function createCard(type, preselectedId) {
         var id = ++cardCounter;
+        var isPresentation = type === 'presentation';
+        var items = isPresentation ? presentations : activities;
+        var placeholderText = isPresentation ? '— Vyberte prezentáciu —' : '— Vyberte aktivitu —';
+        var labelText = isPresentation ? 'Prezentácia' : 'Aktivita';
+        var headerLabel = isPresentation ? 'Žrebovanie (prezentácia)' : 'Žrebovanie';
+        var headerIcon = isPresentation ? 'bi bi-easel text-success' : 'bi bi-dice-3 text-primary';
+        var includeLabel = isPresentation
+            ? 'Zahrnúť študentov už priradených k iným prezentáciám'
+            : 'Zahrnúť študentov už priradených k iným aktivitám';
+        var emptySelectText = isPresentation ? 'Najskôr vyberte prezentáciu' : 'Najskôr vyberte aktivitu';
 
-        var opts = '<option value="">— Vyberte aktivitu —</option>';
-        activities.forEach(function (a) {
-            var sel = (preselectedActivityId && String(a.Id) === String(preselectedActivityId))
+        var opts = '<option value="">' + placeholderText + '</option>';
+        items.forEach(function (item) {
+            var itemId = item.Id;
+            var itemName = isPresentation ? (item.Title + ' (' + item.ActivityName + ')') : item.Name;
+            var sel = (preselectedId && String(itemId) === String(preselectedId))
                 ? ' selected' : '';
-            opts += '<option value="' + a.Id + '"' + sel + '>'
-                 + escapeHtml(a.Name) + '</option>';
+            opts += '<option value="' + itemId + '"' + sel + '>'
+                 + escapeHtml(itemName) + '</option>';
         });
 
         var preselectedName = '';
-        if (preselectedActivityId) {
-            var found = activities.find(function (a) {
-                return String(a.Id) === String(preselectedActivityId);
+        if (preselectedId) {
+            var found = items.find(function (item) {
+                return String(item.Id) === String(preselectedId);
             });
-            if (found) preselectedName = found.Name;
+            if (found) preselectedName = isPresentation ? found.Title : found.Name;
         }
 
         var wrapper = document.createElement('div');
         wrapper.className = 'col-md-6 col-xl-4';
         wrapper.id = 'draw-card-' + id;
+        wrapper.dataset.cardType = type;
         wrapper.innerHTML =
             '<div class="card h-100 border shadow-sm draw-card-inner">'
           +   '<div class="card-header d-flex align-items-center gap-2 py-2">'
-          +     '<i class="bi bi-dice-3 text-primary"></i>'
-          +     '<span class="fw-semibold small">Žrebovanie</span>'
+          +     '<i class="' + headerIcon + '"></i>'
+          +     '<span class="fw-semibold small">' + headerLabel + '</span>'
           +     '<button type="button" class="btn-close ms-auto remove-card-btn" title="Odstrániť kartu"></button>'
           +   '</div>'
           +   '<div class="card-body d-flex flex-column gap-3">'
 
-          // Activity selector
+          // Item selector
           +     '<div>'
-          +       '<label class="form-label small fw-semibold mb-1">Aktivita</label>'
-          +       '<select class="form-select form-select-sm card-activity-select">' + opts + '</select>'
+          +       '<label class="form-label small fw-semibold mb-1">' + labelText + '</label>'
+          +       '<select class="form-select form-select-sm card-item-select">' + opts + '</select>'
           +     '</div>'
 
           // Eligible students list
@@ -87,12 +104,12 @@ document.addEventListener('DOMContentLoaded', function () {
           +       '<div class="form-check mb-1">'
           +         '<input class="form-check-input card-include-assigned" type="checkbox" />'
           +         '<label class="form-check-label small text-muted">'
-          +           'Zahrnúť študentov už priradených k iným aktivitám'
+          +           includeLabel
           +         '</label>'
           +       '</div>'
           +       '<div class="card-eligible-list border rounded p-2" '
           +            'style="max-height:110px;overflow-y:auto;min-height:34px;background:#f8f9fa">'
-          +         '<span class="text-muted small fst-italic">Najskôr vyberte aktivitu</span>'
+          +         '<span class="text-muted small fst-italic">' + emptySelectText + '</span>'
           +       '</div>'
           +     '</div>'
 
@@ -109,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function () {
           +     '<div class="slot-outer slot-outer-compact">'
           +       '<div class="slot-display card-slot-display">'
           +         '<span class="slot-name card-slot-name" style="font-size:1.1rem;color:#6c757d">'
-          +           escapeHtml(preselectedName || 'Vyberte aktivitu')
+          +           escapeHtml(preselectedName || (isPresentation ? 'Vyberte prezentáciu' : 'Vyberte aktivitu'))
           +         '</span>'
           +       '</div>'
           +     '</div>'
@@ -134,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function () {
           + '</div>';
 
         // ── Element refs ──────────────────────────────────────────────────────
-        var actSel           = wrapper.querySelector('.card-activity-select');
+        var actSel           = wrapper.querySelector('.card-item-select');
         var slotName         = wrapper.querySelector('.card-slot-name');
         var removeBtn        = wrapper.querySelector('.remove-card-btn');
         var cardDrawBtn      = wrapper.querySelector('.card-draw-btn');
@@ -144,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var eligibleBadge    = wrapper.querySelector('.card-eligible-badge');
         var includeAssignedCb = wrapper.querySelector('.card-include-assigned');
         var isCardDrawing    = false;
+        var cardType         = type;
 
         // While typing: only clamp the upper bound so the field can be cleared/retyped freely
         countInput.addEventListener('input', function () {
@@ -167,8 +185,47 @@ document.addEventListener('DOMContentLoaded', function () {
                 || parseInt(countInput.max || '0', 10) === 0;
         };
 
+        // ── Eligible list renderer ────────────────────────────────────────────
+        function syncEligibleCount() {
+            var remaining = eligibleList.querySelectorAll('.eligible-tag').length;
+            eligibleBadge.textContent = remaining;
+            eligibleBadge.className = 'badge card-eligible-badge '
+                + (remaining > 0 ? 'bg-primary' : 'bg-secondary');
+            countInput.max = remaining;
+            countMax.textContent = '/ ' + remaining;
+            if (remaining === 0) {
+                countInput.disabled = true;
+                countInput.value = 0;
+                eligibleList.innerHTML =
+                    '<span class="text-muted small fst-italic">Všetci študenti sú už priradení.</span>';
+            } else {
+                countInput.disabled = false;
+                if (parseInt(countInput.value, 10) > remaining) countInput.value = remaining;
+            }
+            wrapper._updateCardBtn();
+            updateAllButtons();
+        }
+
+        function renderEligibleStudents(students) {
+            eligibleList.innerHTML = '';
+            students.forEach(function (s) {
+                var tag = document.createElement('span');
+                tag.className = 'eligible-tag badge d-inline-flex align-items-center gap-1 me-1 mb-1 px-2 py-1 bg-light text-dark border';
+                tag.style.fontWeight = 'normal';
+                tag.dataset.studentId = s.id;
+                tag.innerHTML = escapeHtml(s.fullName)
+                    + '<button type="button" class="btn-close btn-close-sm eligible-remove" '
+                    + 'aria-label="Odstrániť" style="font-size:.6rem;margin-left:2px"></button>';
+                tag.querySelector('.eligible-remove').addEventListener('click', function () {
+                    tag.remove();
+                    syncEligibleCount();
+                });
+                eligibleList.appendChild(tag);
+            });
+        }
+
         // ── Eligible students loader ──────────────────────────────────────────
-        function loadEligible(activityId) {
+        function loadEligible(itemId) {
             eligibleList.innerHTML = '<span class="text-muted small">'
                 + '<span class="spinner-border spinner-border-sm me-1" role="status"></span>'
                 + 'Načítavanie\u2026</span>';
@@ -179,7 +236,10 @@ document.addEventListener('DOMContentLoaded', function () {
             wrapper._updateCardBtn();
 
             var include = includeAssignedCb.checked ? '&includeAlreadyAssigned=true' : '';
-            fetch('/Activities/GetEligibleStudents?activityId=' + activityId + include)
+            var url = cardType === 'presentation'
+                ? '/Tasks/GetEligiblePresentationStudents?taskId=' + itemId + include
+                : '/Activities/GetEligibleStudents?activityId=' + itemId + include;
+            return fetch(url)
                 .then(function (r) { return r.json(); })
                 .then(function (students) {
                     eligibleBadge.textContent = students.length;
@@ -194,10 +254,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         countInput.max = 0;
                         countMax.textContent = '/ 0';
                     } else {
-                        eligibleList.innerHTML = students.map(function (s) {
-                            return '<span class="badge bg-light text-dark border me-1 mb-1 py-1 px-2">'
-                                 + escapeHtml(s.fullName) + '</span>';
-                        }).join('');
+                        renderEligibleStudents(students);
                         countInput.max = students.length;
                         countInput.value = Math.min(parseInt(countInput.value, 10) || 1, students.length);
                         countInput.disabled = false;
@@ -216,7 +273,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Store reload fn so Draw All can refresh after completing
         wrapper._reloadEligible = function () {
-            if (actSel.value) loadEligible(parseInt(actSel.value, 10));
+            if (actSel.value) return loadEligible(parseInt(actSel.value, 10));
+            return Promise.resolve();
         };
 
         // ── Include-assigned checkbox ─────────────────────────────────────────
@@ -224,15 +282,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (actSel.value) loadEligible(parseInt(actSel.value, 10));
         });
 
-        // ── Activity select change ────────────────────────────────────────────
+        // ── Item select change ─────────────────────────────────────────────────
         actSel.addEventListener('change', function () {
             if (!this.value) {
                 slotName.style.color    = '#6c757d';
                 slotName.style.fontSize = '1.1rem';
-                slotName.textContent    = 'Vyberte aktivitu';
+                slotName.textContent    = cardType === 'presentation' ? 'Vyberte prezentáciu' : 'Vyberte aktivitu';
                 wrapper.querySelector('.card-slot-display').classList.remove('spinning', 'locked');
                 eligibleList.innerHTML  =
-                    '<span class="text-muted small fst-italic">Najskôr vyberte aktivitu</span>';
+                    '<span class="text-muted small fst-italic">' + emptySelectText + '</span>';
                 eligibleBadge.style.display = 'none';
                 countInput.disabled = true;
                 countInput.max = 0;
@@ -268,8 +326,8 @@ document.addEventListener('DOMContentLoaded', function () {
         cardsGrid.appendChild(wrapper);
 
         // Auto-load eligible students if pre-selected
-        if (preselectedActivityId) {
-            loadEligible(parseInt(preselectedActivityId, 10));
+        if (preselectedId) {
+            loadEligible(parseInt(preselectedId, 10));
         }
 
         updateAllButtons();
@@ -335,29 +393,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Full draw sequence for one card ───────────────────────────────────────
     async function runCardDraw(cardEl) {
-        var actSel           = cardEl.querySelector('.card-activity-select');
+        var actSel           = cardEl.querySelector('.card-item-select');
         var countInput       = cardEl.querySelector('.card-count-input');
         var slotDisplay      = cardEl.querySelector('.card-slot-display');
         var slotName         = cardEl.querySelector('.card-slot-name');
         var resultsList      = cardEl.querySelector('.card-results-list');
         var completeMsg      = cardEl.querySelector('.card-complete-msg');
         var includeAssignedCb = cardEl.querySelector('.card-include-assigned');
+        var cType            = cardEl.dataset.cardType || 'activity';
 
-        var activityId = parseInt(actSel.value, 10);
-        if (!activityId) return;
+        var selectedId = parseInt(actSel.value, 10);
+        if (!selectedId) return;
         var count = Math.max(1, parseInt(countInput.value, 10) || 1);
         var includeAssigned = includeAssignedCb && includeAssignedCb.checked;
+
+        // Collect the IDs of students still visible in the eligible list
+        var eligibleListEl = cardEl.querySelector('.card-eligible-list');
+        var allowedIds = Array.from(eligibleListEl.querySelectorAll('.eligible-tag[data-student-id]'))
+            .map(function (tag) { return tag.dataset.studentId; });
 
         resultsList.innerHTML    = '';
         completeMsg.style.opacity = '0';
         slotDisplay.classList.remove('locked', 'spinning');
 
         try {
-            var resp = await fetch('/Draw/DrawForActivity', {
+            var drawUrl, drawBody;
+            if (cType === 'presentation') {
+                drawUrl = '/Draw/DrawForPresentation';
+                drawBody = 'taskId=' + selectedId + '&count=' + count
+                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
+            } else {
+                drawUrl = '/Draw/DrawForActivity';
+                drawBody = 'activityId=' + selectedId + '&count=' + count
+                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
+            }
+            allowedIds.forEach(function (sid) { drawBody += '&allowedStudentIds=' + encodeURIComponent(sid); });
+            var resp = await fetch(drawUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'activityId=' + activityId + '&count=' + count
-                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '')
+                body: drawBody
             });
             var data = await resp.json();
 
@@ -388,13 +462,23 @@ document.addEventListener('DOMContentLoaded', function () {
             updateAllButtons();
 
             var validCards = Array.from(cardsGrid.children).filter(function (col) {
-                var sel = col.querySelector('.card-activity-select');
+                var sel = col.querySelector('.card-item-select');
                 return sel && sel.value;
             });
 
-            await Promise.all(validCards.map(function (col) { return runCardDraw(col); }));
+            // Run cards sequentially so each draw completes and eligible lists
+            // refresh before the next card starts (avoids duplicate draws).
+            for (var i = 0; i < validCards.length; i++) {
+                var col = validCards[i];
+                // Refresh eligible list before drawing so the pool reflects
+                // students drawn by the previous card(s).
+                if (typeof col._reloadEligible === 'function') {
+                    await col._reloadEligible();
+                }
+                await runCardDraw(col);
+            }
 
-            // Refresh eligible lists for all drawn cards
+            // Final refresh of all eligible lists
             validCards.forEach(function (col) {
                 if (typeof col._reloadEligible === 'function') col._reloadEligible();
             });
@@ -406,14 +490,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Add card button ───────────────────────────────────────────────────────
     if (addCardBtn) {
-        addCardBtn.addEventListener('click', function () { createCard(null); });
+        addCardBtn.addEventListener('click', function () { createCard('activity', null); });
+    }
+
+    // ── Add presentation card button ──────────────────────────────────────────
+    if (addPresCardBtn) {
+        addPresCardBtn.addEventListener('click', function () { createCard('presentation', null); });
     }
 
     // ── Seed initial cards ────────────────────────────────────────────────────
+    var hasInitial = false;
     if (initialIds && initialIds.length > 0) {
-        initialIds.forEach(function (actId) { createCard(actId); });
-    } else {
-        createCard(null);
+        initialIds.forEach(function (actId) { createCard('activity', actId); });
+        hasInitial = true;
+    }
+    if (initialPresIds && initialPresIds.length > 0) {
+        initialPresIds.forEach(function (presId) { createCard('presentation', presId); });
+        hasInitial = true;
+    }
+    if (!hasInitial) {
+        createCard('activity', null);
     }
 
     // ── Utilities ─────────────────────────────────────────────────────────────

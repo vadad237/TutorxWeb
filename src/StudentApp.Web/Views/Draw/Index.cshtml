@@ -9,6 +9,10 @@
         Model?.AllActiveStudentNames ?? new List<string>());
     var initialIdsJson = System.Text.Json.JsonSerializer.Serialize(
         (ViewBag.InitialActivityIds as List<int>) ?? new List<int>());
+    var presentationsJson = System.Text.Json.JsonSerializer.Serialize(
+        Model?.Presentations ?? new List<DrawPresentationVm>());
+    var initialPresIdsJson = System.Text.Json.JsonSerializer.Serialize(
+        (ViewBag.InitialPresentationIds as List<int>) ?? new List<int>());
 }
 
 @section Styles {
@@ -88,7 +92,10 @@
 <!-- Toolbar -->
 <div class="d-flex align-items-center gap-2 mb-3">
     <button id="add-card-btn" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-plus-lg me-1"></i>Pridať žrebovanie
+        <i class="bi bi-plus-lg me-1"></i>Pridať žrebovanie (aktivita)
+    </button>
+    <button id="add-pres-card-btn" class="btn btn-outline-success btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Pridať žrebovanie (prezentácia)
     </button>
     <button id="draw-all-btn" class="btn btn-primary btn-sm px-4" disabled>
         <i class="bi bi-shuffle me-2"></i>Žrebovať všetko
@@ -100,11 +107,13 @@
      data-all-names='@Html.Raw(allNamesJson)'
      data-activities='@Html.Raw(activitiesJson)'
      data-initial-ids='@Html.Raw(initialIdsJson)'
+     data-presentations='@Html.Raw(presentationsJson)'
+     data-initial-pres-ids='@Html.Raw(initialPresIdsJson)'
      style="display:none"></div>
 
 <!-- Cards grid – populated by JS -->
 <div class="row g-3" id="draw-cards"></div>
 
 @section Scripts {
-<script src="/js/draw.js"></script>
+<script src="~/js/draw.js" asp-append-version="true"></script>
 }

@@ -433,11 +433,67 @@ public class ActivitiesController : Controller
         {
             ActivityId = activityId,
             ActivityName = activity.Name,
+            SourceName = activity.Name,
+            DrawTypeName = "Aktivita",
             DrawnStudentNames = drawnNames,
             AllStudentNames = allStudentNames
         };
 
         return View(vm);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> DrawForPresentation(int taskId, int count)
+    {
+        try
+        {
+            var drawn = await _assignmentService.DrawAddForPresentationAsync(taskId, count);
+            TempData["DrawnStudents"] = JsonSerializer.Serialize(
+                drawn.Select(s => $"{s.FirstName} {s.LastName}").ToList());
+            return RedirectToAction(nameof(DrawResultForPresentation), new { taskId });
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = $"Žrebovanie zlyhalo: {ex.Message}";
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DrawResultForPresentation(int taskId)
+    {
+        var drawnJson = TempData["DrawnStudents"] as string;
+
+        var task = await _db.TaskItems
+            .Include(t => t.Activity)
+                .ThenInclude(a => a.Group)
+                    .ThenInclude(g => g.Students)
+            .FirstOrDefaultAsync(t => t.Id == taskId);
+
+        if (task == null) return NotFound();
+
+        if (drawnJson == null)
+            return RedirectToAction(nameof(Details), new { id = task.ActivityId });
+
+        var drawnNames = JsonSerializer.Deserialize<List<string>>(drawnJson)!;
+
+        var allStudentNames = task.Activity.Group.Students
+            .Where(s => s.IsActive)
+            .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
+            .Select(s => $"{s.FirstName} {s.LastName}")
+            .ToList();
+
+        var vm = new DrawResultVm
+        {
+            ActivityId = task.ActivityId,
+            ActivityName = task.Activity.Name,
+            SourceName = task.Title,
+            DrawTypeName = "Prezentácia",
+            DrawnStudentNames = drawnNames,
+            AllStudentNames = allStudentNames
+        };
+
+        return View("DrawResult", vm);
     }
 
     [HttpPost]

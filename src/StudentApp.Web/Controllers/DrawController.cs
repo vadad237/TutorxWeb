@@ -30,7 +30,7 @@ public class DrawController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(int? groupId, string? activityIds = null)
+    public async Task<IActionResult> Index(int? groupId, string? activityIds = null, string? presentationIds = null)
     {
         var gid = groupId ?? HttpContext.Session.GetActiveGroup();
         if (!gid.HasValue)
@@ -65,6 +65,18 @@ public class DrawController : Controller
             })
             .ToListAsync();
 
+        var presentations = await _db.TaskItems
+            .Where(t => t.IsPresentation && t.Activity.GroupId == gid.Value && !t.Activity.IsArchived)
+            .OrderBy(t => t.Activity.Name).ThenBy(t => t.Title)
+            .Select(t => new DrawPresentationVm
+            {
+                Id = t.Id,
+                Title = t.Title,
+                ActivityId = t.ActivityId,
+                ActivityName = t.Activity.Name
+            })
+            .ToListAsync();
+
         var vm = new DrawIndexVm
         {
             GroupId = gid.Value,
@@ -73,7 +85,8 @@ public class DrawController : Controller
             BagStatus = bagStatus,
             LastDraw = history.FirstOrDefault(),
             AllGroups = allGroups,
-            Activities = activities
+            Activities = activities,
+            Presentations = presentations
         };
 
         // Parse and validate initial activity IDs from query string
@@ -85,15 +98,39 @@ public class DrawController : Controller
                 .ToList();
         ViewBag.InitialActivityIds = initialIds;
 
+        // Parse and validate initial presentation IDs from query string
+        var initialPresIds = string.IsNullOrEmpty(presentationIds)
+            ? new List<int>()
+            : presentationIds.Split(',')
+                .Select(s => int.TryParse(s.Trim(), out var id) ? id : 0)
+                .Where(id => id > 0)
+                .ToList();
+        ViewBag.InitialPresentationIds = initialPresIds;
+
         return View(vm);
     }
 
     [HttpPost]
-    public async Task<IActionResult> DrawForActivity(int activityId, int count, bool includeAlreadyAssigned = false)
+    public async Task<IActionResult> DrawForActivity(int activityId, int count, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
     {
         try
         {
-            var drawn = await _assignmentService.DrawAddForActivityAsync(activityId, count, includeAlreadyAssigned);
+            var drawn = await _assignmentService.DrawAddForActivityAsync(activityId, count, includeAlreadyAssigned, allowedStudentIds);
+            var names = drawn.Select(s => $"{s.FirstName} {s.LastName}").ToList();
+            return Json(new { success = true, drawnNames = names });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> DrawForPresentation(int taskId, int count, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
+    {
+        try
+        {
+            var drawn = await _assignmentService.DrawAddForPresentationAsync(taskId, count, includeAlreadyAssigned, allowedStudentIds);
             var names = drawn.Select(s => $"{s.FirstName} {s.LastName}").ToList();
             return Json(new { success = true, drawnNames = names });
         }

@@ -95,4 +95,39 @@ public class TasksController : Controller
 
         return Json(new { success = true, activityId });
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GetEligiblePresentationStudents(int taskId, bool includeAlreadyAssigned = false)
+    {
+        var task = await _db.TaskItems
+            .Include(t => t.Activity).ThenInclude(a => a.Assignments).ThenInclude(a => a.Student)
+            .Include(t => t.PresentationStudents)
+            .FirstOrDefaultAsync(t => t.Id == taskId && t.IsPresentation);
+
+        if (task == null) return NotFound();
+
+        var assignedToThis = task.PresentationStudents.Select(ps => ps.StudentId).ToHashSet();
+
+        var pool = task.Activity.Assignments
+            .Select(a => a.Student)
+            .Where(s => s.IsActive && !assignedToThis.Contains(s.Id));
+
+        if (!includeAlreadyAssigned)
+        {
+            var assignedToAnyPres = await _db.PresentationStudents
+                .Where(ps => ps.TaskItem.ActivityId == task.ActivityId)
+                .Select(ps => ps.StudentId)
+                .Distinct()
+                .ToListAsync();
+
+            pool = pool.Where(s => !assignedToAnyPres.Contains(s.Id));
+        }
+
+        var eligible = pool
+            .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
+            .Select(s => new { s.Id, FullName = s.FirstName + " " + s.LastName })
+            .ToList();
+
+        return Json(eligible);
+    }
 }

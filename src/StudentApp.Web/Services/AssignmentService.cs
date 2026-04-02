@@ -142,7 +142,7 @@ public class AssignmentService : IAssignmentService
     }
 
     // Draw N random students for the activity, ADDING to existing (no reset)
-    public async Task<List<Student>> DrawAddForActivityAsync(int activityId, int count, bool includeAlreadyAssigned = false)
+    public async Task<List<Student>> DrawAddForActivityAsync(int activityId, int count, bool includeAlreadyAssigned = false, List<int>? allowedStudentIds = null)
     {
         var activity = await _db.Activities
             .Include(a => a.Group).ThenInclude(g => g.Students)
@@ -170,6 +170,10 @@ public class AssignmentService : IAssignmentService
             pool = pool.Where(s => !assignedToAny.Contains(s.Id));
         }
 
+        // Restrict to the client-side selection when provided
+        if (allowedStudentIds != null && allowedStudentIds.Count > 0)
+            pool = pool.Where(s => allowedStudentIds.Contains(s.Id));
+
         var eligible = pool.ToList();
 
         var drawCount = Math.Min(count, eligible.Count);
@@ -196,6 +200,74 @@ public class AssignmentService : IAssignmentService
                 StudentId = student.Id,
                 GroupId = activity.GroupId,
                 ActivityId = activityId,
+                CycleNumber = currentCycle,
+                DrawnAt = drawnAt
+            });
+        }
+
+        await _db.SaveChangesAsync();
+        return drawn;
+    }
+
+    // Draw N random students for a presentation, ADDING to existing PresentationStudents
+    public async Task<List<Student>> DrawAddForPresentationAsync(int taskId, int count, bool includeAlreadyAssigned = false, List<int>? allowedStudentIds = null)
+    {
+        var task = await _db.TaskItems
+            .Include(t => t.Activity).ThenInclude(a => a.Assignments).ThenInclude(a => a.Student)
+            .Include(t => t.PresentationStudents)
+            .FirstOrDefaultAsync(t => t.Id == taskId && t.IsPresentation)
+            ?? throw new InvalidOperationException("Presentation not found.");
+
+        // Already assigned to this presentation
+        var assignedToThis = task.PresentationStudents.Select(ps => ps.StudentId).ToHashSet();
+
+        // Pool = students assigned to the parent activity, minus already on this presentation
+        var pool = task.Activity.Assignments
+            .Select(a => a.Student)
+            .Where(s => s.IsActive && !assignedToThis.Contains(s.Id));
+
+        if (!includeAlreadyAssigned)
+        {
+            // Exclude students already assigned to any other presentation in this activity
+            var assignedToAnyPres = await _db.PresentationStudents
+                .Where(ps => ps.TaskItem.ActivityId == task.ActivityId)
+                .Select(ps => ps.StudentId)
+                .Distinct()
+                .ToListAsync();
+
+            pool = pool.Where(s => !assignedToAnyPres.Contains(s.Id));
+        }
+
+        // Restrict to the client-side selection when provided
+        if (allowedStudentIds != null && allowedStudentIds.Count > 0)
+            pool = pool.Where(s => allowedStudentIds.Contains(s.Id));
+
+        var eligible = pool.ToList();
+        var drawCount = Math.Min(count, eligible.Count);
+        var drawn = eligible.OrderBy(_ => Random.Shared.Next()).Take(drawCount).ToList();
+
+        // Use a single shared timestamp so all students in this batch are grouped together
+        var drawnAt = DateTime.UtcNow;
+
+        // Determine the current draw cycle for this group
+        var currentCycle = await _db.DrawHistories
+            .Where(d => d.GroupId == task.Activity.GroupId)
+            .MaxAsync(d => (int?)d.CycleNumber) ?? 1;
+
+        foreach (var student in drawn)
+        {
+            _db.PresentationStudents.Add(new PresentationStudent
+            {
+                TaskItemId = taskId,
+                StudentId = student.Id
+            });
+
+            _db.DrawHistories.Add(new DrawHistory
+            {
+                StudentId = student.Id,
+                GroupId = task.Activity.GroupId,
+                ActivityId = task.ActivityId,
+                TaskItemId = taskId,
                 CycleNumber = currentCycle,
                 DrawnAt = drawnAt
             });

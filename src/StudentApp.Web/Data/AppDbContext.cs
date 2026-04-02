@@ -97,6 +97,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .OnDelete(DeleteBehavior.SetNull)
             .IsRequired(false);
 
+        builder.Entity<DrawHistory>()
+            .HasOne(d => d.TaskItem).WithMany()
+            .HasForeignKey(d => d.TaskItemId)
+            .OnDelete(DeleteBehavior.NoAction)
+            .IsRequired(false);
+
         builder.Entity<Attendance>()
             .HasOne(a => a.Student)
             .WithMany(s => s.Attendances)

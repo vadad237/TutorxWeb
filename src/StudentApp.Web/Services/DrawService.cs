@@ -70,15 +70,17 @@ public class DrawService : IDrawService
             .OrderByDescending(d => d.DrawnAt)
             .Include(d => d.Student)
             .Include(d => d.Activity)
+            .Include(d => d.TaskItem)
             .ToListAsync();
 
-        // Group by (ActivityId, DrawnAt tick) — activity draws share the same DrawnAt timestamp;
-        // bag draws (ActivityId == null) are kept as individual batches of one.
+        // Group by (ActivityId, TaskItemId, DrawnAt tick) so all students drawn in one
+        // batch share the same timestamp; bag draws (both null) are individual rows.
         var batches = records
-            .GroupBy(d => (d.ActivityId, d.DrawnAt.Ticks))
+            .GroupBy(d => (d.ActivityId, d.TaskItemId, d.DrawnAt.Ticks))
             .OrderByDescending(g => g.Key.Ticks)
             .Select(g => new DrawBatchDto(
                 g.First().Activity?.Name,
+                g.First().TaskItem?.Title,
                 g.OrderBy(d => d.Student.LastName)
                  .ThenBy(d => d.Student.FirstName)
                  .Select(d => d.Student.FirstName + " " + d.Student.LastName)

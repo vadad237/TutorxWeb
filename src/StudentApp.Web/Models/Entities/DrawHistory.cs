@@ -9,8 +9,10 @@ public class DrawHistory
     public DateTime DrawnAt { get; set; } = DateTime.UtcNow;
 
     public int? ActivityId { get; set; }
+    public int? TaskItemId { get; set; }
 
     public Student Student { get; set; } = null!;
     public Group Group { get; set; } = null!;
     public Activity? Activity { get; set; }
+    public TaskItem? TaskItem { get; set; }
 }

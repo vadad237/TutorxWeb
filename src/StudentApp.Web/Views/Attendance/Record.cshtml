@@ -48,7 +48,7 @@
                     </td>
                     <td>
                         <input type="radio" name="Rows[@i].Status" value="Present"
-                               class="form-check-input" @(row.Status == AttendanceStatus.Present ? "checked" : "") />
+                               class="form-check-input" @(row.Status == AttendanceStatus.Present || row.Status == null ? "checked" : "") />
                     </td>
                     <td>
                         <input type="radio" name="Rows[@i].Status" value="Absent"
@@ -67,6 +67,14 @@
     {
         <div class="alert alert-warning">Žiadni aktívni študenti v tejto skupine.</div>
     }
+    else
+    {
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i>Uložiť dochádzku
+            </button>
+        </div>
+    }
 </form>
 
 @section Scripts {
@@ -75,26 +83,6 @@ document.getElementById('dateInput').addEventListener('change', function() {
     var gid = @Model.GroupId;
     var date = this.value;
     window.location.href = '/Attendance/Record?groupId=' + gid + '&date=' + date;
-});
-
-var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
-
-document.querySelectorAll('input[type="radio"]').forEach(function(radio) {
-    radio.addEventListener('change', function() {
-        var studentId = this.closest('tr').querySelector('input[type="hidden"][name$=".StudentId"]').value;
-        var status = this.value;
-        var params = new URLSearchParams({
-            groupId: '@Model.GroupId',
-            date: '@Model.Date.ToString("yyyy-MM-dd")',
-            studentId: studentId,
-            status: status,
-            __RequestVerificationToken: token
-        });
-        fetch('/Attendance/SaveSingle', { method: 'POST', body: params })
-            .then(function(r) {
-                if (!r.ok) console.error('Failed to save attendance');
-            });
-    });
 });
 </script>
 }

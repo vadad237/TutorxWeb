@@ -10,7 +10,8 @@
     <thead class="table-dark">
         <tr>
             <th>#</th>
-            <th>Aktivita</th>
+            <th>Názov</th>
+            <th>Typ</th>
             <th>Žrebovaní študenti</th>
             <th>Dátum a čas</th>
         </tr>
@@ -22,13 +23,31 @@
             <tr>
                 <td>@(idx++)</td>
                 <td>
-                    @if (b.ActivityName != null)
+                    @if (b.PresentationTitle != null)
                     {
-                        <span class="badge bg-primary">@b.ActivityName</span>
+                        <span>@b.PresentationTitle</span>
+                    }
+                    else if (b.ActivityName != null)
+                    {
+                        <span>@b.ActivityName</span>
                     }
                     else
                     {
                         <span class="text-muted fst-italic">Žreb z vreca</span>
+                    }
+                </td>
+                <td>
+                    @if (b.PresentationTitle != null)
+                    {
+                        <span class="badge bg-info text-dark">Prezentácia</span>
+                    }
+                    else if (b.ActivityName != null)
+                    {
+                        <span class="badge bg-primary">Aktivita</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Vrece</span>
                     }
                 </td>
                 <td>
