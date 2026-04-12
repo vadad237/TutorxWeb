@@ -139,6 +139,9 @@ else
     <script>
 // ── Filter bar ────────────────────────────────────────────────────────────────
 (function () {
+    function normalize(str) {
+        return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    }
     var searchInput  = document.getElementById('studentSearch');
     var statusFilter = document.getElementById('statusFilter');
     var yearFilter   = document.getElementById('yearFilter');
@@ -150,16 +153,16 @@ else
     var allRows = Array.from(document.querySelectorAll('tbody tr'));
 
     function applyFilters() {
-        var q      = searchInput.value.trim().toLowerCase();
+        var q      = normalize(searchInput.value.trim());
         var status = statusFilter.value;
         var year   = yearFilter.value;
         var visible = 0;
 
         allRows.forEach(function (row) {
             var matchSearch = !q ||
-                row.dataset.name.includes(q) ||
-                row.dataset.email.includes(q) ||
-                row.dataset.card.includes(q);
+                normalize(row.dataset.name).includes(q) ||
+                normalize(row.dataset.email).includes(q) ||
+                normalize(row.dataset.card).includes(q);
             var matchStatus = !status || row.dataset.active === status;
             var matchYear   = !year   || row.dataset.year  === year;
             var show = matchSearch && matchStatus && matchYear;

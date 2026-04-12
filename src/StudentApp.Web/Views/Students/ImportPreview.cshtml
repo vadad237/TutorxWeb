@@ -17,15 +17,41 @@
 <form asp-action="ImportConfirm" method="post">
     <input type="hidden" name="GroupId" value="@Model.GroupId" />
 
+    <div class="card mb-3">
+        <div class="card-body">
+            <strong>Stĺpce na import:</strong>
+            <div class="d-flex gap-4 mt-2">
+                <div class="form-check">
+                    <input type="hidden" name="ImportEmail" value="false" />
+                    <input type="checkbox" name="ImportEmail" value="true" id="colEmail"
+                           class="form-check-input col-toggle" data-col="col-email" checked />
+                    <label class="form-check-label" for="colEmail">Email</label>
+                </div>
+                <div class="form-check">
+                    <input type="hidden" name="ImportCardNumber" value="false" />
+                    <input type="checkbox" name="ImportCardNumber" value="true" id="colCardNumber"
+                           class="form-check-input col-toggle" data-col="col-cardnumber" checked />
+                    <label class="form-check-label" for="colCardNumber">Číslo karty</label>
+                </div>
+                <div class="form-check">
+                    <input type="hidden" name="ImportYear" value="false" />
+                    <input type="checkbox" name="ImportYear" value="true" id="colYear"
+                           class="form-check-input col-toggle" data-col="col-year" checked />
+                    <label class="form-check-label" for="colYear">Ročník</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <table class="table table-striped">
         <thead class="table-dark">
             <tr>
                 <th>Importovať?</th>
                 <th>Meno</th>
                 <th>Priezvisko</th>
-                <th>Email</th>
-                <th>Číslo karty</th>
-                <th>Ročník</th>
+                <th class="col-email">Email</th>
+                <th class="col-cardnumber">Číslo karty</th>
+                <th class="col-year">Ročník</th>
                 <th>Stav</th>
                 <th>Poznámka</th>
             </tr>
@@ -55,9 +81,9 @@
                     </td>
                     <td>@row.FirstName</td>
                     <td>@row.LastName</td>
-                    <td>@(row.Email ?? "-")</td>
-                    <td>@(row.CardNumber ?? "-")</td>
-                    <td>@(row.Year.HasValue ? row.Year.Value.ToString() : "-")</td>
+                    <td class="col-email">@(row.Email ?? "-")</td>
+                    <td class="col-cardnumber">@(row.CardNumber ?? "-")</td>
+                    <td class="col-year">@(row.Year.HasValue ? row.Year.Value.ToString() : "-")</td>
                     <td>
                         @if (row.Status == "Valid") { <span class="badge bg-success">Platný</span> }
                         else if (row.Status == "Duplicate") { <span class="badge bg-warning text-dark">Duplikát</span> }
@@ -72,3 +98,15 @@
     <button type="submit" class="btn btn-primary">Potvrdiť import</button>
     <a asp-action="Import" asp-route-groupId="@Model.GroupId" class="btn btn-secondary">Zrušiť</a>
 </form>
+
+<script>
+    document.querySelectorAll('.col-toggle').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            var col = this.dataset.col;
+            var visible = this.checked;
+            document.querySelectorAll('.' + col).forEach(function (el) {
+                el.style.display = visible ? '' : 'none';
+            });
+        });
+    });
+</script>

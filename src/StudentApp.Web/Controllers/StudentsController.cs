@@ -223,7 +223,14 @@ public class StudentsController : Controller
     {
         var rowsToImport = vm.Rows
             .Where(r => r.Selected && r.Status != "Error")
-            .Select(r => new ImportRowDto(r.FirstName, r.LastName, r.Email, r.CardNumber, r.Year, ImportRowStatus.Valid, null))
+            .Select(r => new ImportRowDto(
+                r.FirstName,
+                r.LastName,
+                vm.ImportEmail ? r.Email : null,
+                vm.ImportCardNumber ? r.CardNumber : null,
+                vm.ImportYear ? r.Year : null,
+                ImportRowStatus.Valid,
+                null))
             .ToList();
 
         var count = await _importService.ImportStudentsAsync(vm.GroupId, rowsToImport);

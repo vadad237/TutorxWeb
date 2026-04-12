@@ -97,6 +97,9 @@ public class ImportPreviewVm
     public int GroupId { get; set; }
     public string GroupName { get; set; } = null!;
     public List<ImportRowVm> Rows { get; set; } = [];
+    public bool ImportEmail { get; set; } = true;
+    public bool ImportCardNumber { get; set; } = true;
+    public bool ImportYear { get; set; } = true;
 }
 
 public class ImportRowVm
@@ -115,4 +118,7 @@ public class ImportConfirmVm
 {
     public int GroupId { get; set; }
     public List<ImportRowVm> Rows { get; set; } = [];
+    public bool ImportEmail { get; set; } = true;
+    public bool ImportCardNumber { get; set; } = true;
+    public bool ImportYear { get; set; } = true;
 }

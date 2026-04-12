@@ -27,7 +27,15 @@
         </div>
     </div>
 
-    <table class="table table-striped">
+    <div class="mb-2" style="max-width:300px;">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="search" id="studentSearch" class="form-control"
+                   placeholder="Hľadať študenta…" autocomplete="off" />
+        </div>
+    </div>
+
+    <table class="table table-striped" id="attendanceTable">
         <thead class="table-dark">
             <tr>
                 <th>Študent</th>
@@ -84,5 +92,20 @@ document.getElementById('dateInput').addEventListener('change', function() {
     var date = this.value;
     window.location.href = '/Attendance/Record?groupId=' + gid + '&date=' + date;
 });
+
+(function () {
+    function normalize(str) {
+        return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    }
+    var input = document.getElementById('studentSearch');
+    if (!input) return;
+    input.addEventListener('input', function () {
+        var filter = normalize(this.value.trim());
+        document.querySelectorAll('#attendanceTable tbody tr').forEach(function (row) {
+            var name = normalize(row.cells[0]?.textContent.trim() ?? '');
+            row.style.display = (!filter || name.includes(filter)) ? '' : 'none';
+        });
+    });
+})();
 </script>
 }
