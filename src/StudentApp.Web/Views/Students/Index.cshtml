@@ -9,6 +9,7 @@ else
 {
     var groupId = (int)ViewBag.GroupId;
     var groupName = (string)ViewBag.GroupName;
+    var years = Model.Where(s => s.Year.HasValue).Select(s => s.Year!.Value).Distinct().OrderBy(y => y).ToList();
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Študenti &mdash; @groupName</h2>
@@ -29,6 +30,41 @@ else
         </a>
     </div>
 </div>
+
+<div class="row g-2 mb-3 align-items-end">
+    <div class="col-12 col-md-5 col-lg-4">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="search" id="studentSearch" class="form-control"
+                   placeholder="Hľadať podľa mena, e-mailu alebo čísla karty…" autocomplete="off" />
+        </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <select id="statusFilter" class="form-select form-select-sm">
+            <option value="">Všetky stavy</option>
+            <option value="active">Aktívny</option>
+            <option value="inactive">Neaktívny</option>
+        </select>
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <select id="yearFilter" class="form-select form-select-sm">
+            <option value="">Všetky ročníky</option>
+            @foreach (var y in years)
+            {
+                <option value="@y">@y. ročník</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="button" id="clearFilters" class="btn btn-sm btn-outline-secondary d-none">
+            <i class="bi bi-x-lg me-1"></i>Zrušiť filtre
+        </button>
+    </div>
+    <div class="col-auto ms-auto">
+        <span id="filterCount" class="text-muted small"></span>
+    </div>
+</div>
+
     <table class="table table-striped table-hover">
         <thead class="table-dark">
             <tr>
@@ -48,7 +84,12 @@ else
         <tbody>
             @foreach (var s in Model)
             {
-                <tr class="@(!s.IsActive ? "table-secondary" : "")">
+                <tr class="@(!s.IsActive ? "table-secondary" : "")"
+                    data-name="@s.FullName.ToLowerInvariant()"
+                    data-email="@(s.Email?.ToLowerInvariant() ?? "")"
+                    data-card="@(s.CardNumber?.ToLowerInvariant() ?? "")"
+                    data-active="@(s.IsActive ? "active" : "inactive")"
+                    data-year="@(s.Year.HasValue ? s.Year.Value.ToString() : "")">
                     <td>
                         <input type="checkbox" class="form-check-input row-check" value="@s.Id" data-name="@s.FullName" />
                     </td>
@@ -86,6 +127,8 @@ else
         </tbody>
     </table>
 
+    <div id="noResultsMsg" class="alert alert-info d-none">Žiadni študenti nevyhovujú zadaným filtrom.</div>
+
     @if (!Model.Any())
     {
         <div class="alert alert-info">V tejto skupine zatiaľ nie sú žiadni študenti. Pridajte študentov ručne alebo importujte zo súboru.</div>
@@ -94,6 +137,62 @@ else
 
 @section Scripts {
     <script>
+// ── Filter bar ────────────────────────────────────────────────────────────────
+(function () {
+    var searchInput  = document.getElementById('studentSearch');
+    var statusFilter = document.getElementById('statusFilter');
+    var yearFilter   = document.getElementById('yearFilter');
+    var clearBtn     = document.getElementById('clearFilters');
+    var filterCount  = document.getElementById('filterCount');
+    var noResults    = document.getElementById('noResultsMsg');
+    if (!searchInput) return;
+
+    var allRows = Array.from(document.querySelectorAll('tbody tr'));
+
+    function applyFilters() {
+        var q      = searchInput.value.trim().toLowerCase();
+        var status = statusFilter.value;
+        var year   = yearFilter.value;
+        var visible = 0;
+
+        allRows.forEach(function (row) {
+            var matchSearch = !q ||
+                row.dataset.name.includes(q) ||
+                row.dataset.email.includes(q) ||
+                row.dataset.card.includes(q);
+            var matchStatus = !status || row.dataset.active === status;
+            var matchYear   = !year   || row.dataset.year  === year;
+            var show = matchSearch && matchStatus && matchYear;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+
+        var hasFilter = q || status || year;
+        clearBtn.classList.toggle('d-none', !hasFilter);
+        noResults.classList.toggle('d-none', visible > 0 || allRows.length === 0);
+        filterCount.textContent = hasFilter
+            ? visible + ' z ' + allRows.length + ' študentov'
+            : '';
+
+        // keep selectAll consistent after filtering
+        updateToolbar();
+    }
+
+    function clearAll() {
+        searchInput.value = '';
+        statusFilter.value = '';
+        yearFilter.value = '';
+        applyFilters();
+    }
+
+    searchInput.addEventListener('input',  applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+    yearFilter.addEventListener('change',   applyFilters);
+    clearBtn.addEventListener('click',      clearAll);
+})();
+// ── Bulk-select toolbar ───────────────────────────────────────────────────────
+var updateToolbar; // declared here so the filter IIFE can call it after filtering
+
 (function () {
     var selectAll       = document.getElementById('selectAll');
     if (!selectAll) return;
@@ -106,7 +205,7 @@ else
         return Array.from(document.querySelectorAll('.row-check:checked'));
     }
 
-    function updateToolbar() {
+    updateToolbar = function () {
         var checked = getChecked();
         var count = checked.length;
         var hasSelection = count > 0;
@@ -115,13 +214,17 @@ else
         bulkActivateBtn.disabled   = !hasSelection;
         bulkDeactivateBtn.disabled = !hasSelection;
         bulkDeleteBtn.disabled     = !hasSelection;
-        var total = document.querySelectorAll('.row-check').length;
-        selectAll.checked = count === total && total > 0;
-        selectAll.indeterminate = count > 0 && count < total;
-    }
+        var visibleBoxes = Array.from(document.querySelectorAll('.row-check'))
+            .filter(function (cb) { return cb.closest('tr').style.display !== 'none'; });
+        var visibleChecked = visibleBoxes.filter(function (cb) { return cb.checked; });
+        selectAll.checked = visibleBoxes.length > 0 && visibleChecked.length === visibleBoxes.length;
+        selectAll.indeterminate = visibleChecked.length > 0 && visibleChecked.length < visibleBoxes.length;
+    };
 
     selectAll.addEventListener('change', function () {
-        document.querySelectorAll('.row-check').forEach(function (cb) {
+        var visibleBoxes = Array.from(document.querySelectorAll('.row-check'))
+            .filter(function (cb) { return cb.closest('tr').style.display !== 'none'; });
+        visibleBoxes.forEach(function (cb) {
             cb.checked = selectAll.checked;
         });
         updateToolbar();

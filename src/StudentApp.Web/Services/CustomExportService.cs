@@ -30,11 +30,11 @@ public class CustomExportService : ICustomExportService
         // --- Students ---
         if (request.IncludeStudents)
         {
-            headers.Add(("Meno",           "students"));
-            headers.Add(("Priezvisko",    "students"));
-            headers.Add(("Číslo karty",   "students"));
-            headers.Add(("Ročník",        "students"));
-            headers.Add(("Email",          "students"));
+            if (request.IncludeStudentFirstName)  headers.Add(("Meno",        "students"));
+            if (request.IncludeStudentLastName)   headers.Add(("Priezvisko",  "students"));
+            if (request.IncludeStudentCardNumber) headers.Add(("Číslo karty", "students"));
+            if (request.IncludeStudentYear)       headers.Add(("Ročník",      "students"));
+            if (request.IncludeStudentEmail)      headers.Add(("Email",       "students"));
         }
 
         // --- Attendance ---
@@ -181,11 +181,11 @@ public class CustomExportService : ICustomExportService
 
             if (request.IncludeStudents)
             {
-                row.Add(student.FirstName);
-                row.Add(student.LastName);
-                row.Add(student.CardNumber ?? "");
-                row.Add(student.Year?.ToString() ?? "");
-                row.Add(student.Email ?? "");
+                if (request.IncludeStudentFirstName)  row.Add(student.FirstName);
+                if (request.IncludeStudentLastName)   row.Add(student.LastName);
+                if (request.IncludeStudentCardNumber) row.Add(student.CardNumber ?? "");
+                if (request.IncludeStudentYear)       row.Add(student.Year?.ToString() ?? "");
+                if (request.IncludeStudentEmail)      row.Add(student.Email ?? "");
             }
 
             if (request.IncludeAttendance)
@@ -348,8 +348,8 @@ public class CustomExportService : ICustomExportService
             }
         }
 
-        // Left-align text columns: First Name, Last Name (first two of students section)
-        for (int c = 0; c < Math.Min(totalCols, 2); c++)
+        // Left-align text columns in the students section
+        for (int c = 0; c < totalCols; c++)
         {
             if (headers[c].Section == "students")
                 ws.Column(c + 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;

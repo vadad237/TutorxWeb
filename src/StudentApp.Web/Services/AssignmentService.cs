@@ -18,7 +18,7 @@ public class AssignmentService : IAssignmentService
     public Task<AssignmentResultDto> AssignTasksAsync(int activityId)
         => AssignStudentsAsync(activityId);
 
-    // Bulk assign: shuffles ALL active students once then distributes them evenly
+    // Bulk assign: shuffles ALL active students and activities once then distributes students evenly
     // across the given activities (round-robin). Within each activity students are
     // also spread evenly across that activity's tasks.
     public async Task BulkAssignAsync(int[] activityIds)
@@ -34,6 +34,8 @@ public class AssignmentService : IAssignmentService
             .ToListAsync();
 
         if (activities.Count == 0) return;
+
+        activities = activities.OrderBy(_ => Random.Shared.Next()).ToList();
 
         var activeStudents = activities[0].Group.Students
             .Where(s => s.IsActive)

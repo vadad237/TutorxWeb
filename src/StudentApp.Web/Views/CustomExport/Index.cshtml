@@ -48,15 +48,25 @@ else
                              style="background:#e8f0fe">
                             <i class="bi bi-people-fill fs-4" style="color:#1e3a5f"></i>
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <h6 class="mb-1 fw-semibold">Študenti</h6>
                             <p class="text-muted small mb-2">Základné informácie o študentoch</p>
-                            <div class="d-flex flex-wrap gap-1">
-                                <span class="badge rounded-pill" style="background:#e8f0fe;color:#1e3a5f">Meno</span>
-                                <span class="badge rounded-pill" style="background:#e8f0fe;color:#1e3a5f">Priezvisko</span>
-                                <span class="badge rounded-pill" style="background:#e8f0fe;color:#1e3a5f">Číslo karty</span>
-                                <span class="badge rounded-pill" style="background:#e8f0fe;color:#1e3a5f">Ročník</span>
-                                <span class="badge rounded-pill" style="background:#e8f0fe;color:#1e3a5f">Email</span>
+                            <div class="d-flex flex-wrap gap-2 student-fields">
+                                @foreach (var field in new[] {
+                                    ("IncludeStudentFirstName",  "Meno"),
+                                    ("IncludeStudentLastName",   "Priezvisko"),
+                                    ("IncludeStudentCardNumber", "Číslo karty"),
+                                    ("IncludeStudentYear",       "Ročník"),
+                                    ("IncludeStudentEmail",      "Email")
+                                })
+                                {
+                                    <label class="student-field-label" onclick="event.stopPropagation()">
+                                        <input type="checkbox" name="@field.Item1" value="true"
+                                               class="student-field-cb" checked />
+                                        <input type="hidden" name="@field.Item1" value="false" />
+                                        <span class="badge rounded-pill student-field-badge" style="background:#e8f0fe;color:#1e3a5f">@field.Item2</span>
+                                    </label>
+                                }
                             </div>
                         </div>
                         <i class="bi bi-check-circle-fill ms-auto text-primary check-icon" style="font-size:1.2rem"></i>
@@ -253,6 +263,20 @@ else
 .section-card:not(.active) .check-icon::before { content: "\F287"; } /* circle */
 .cursor-pointer { cursor: pointer; }
 .format-radio .form-check-label { cursor: pointer; }
+.student-field-label { cursor: pointer; user-select: none; }
+.student-field-cb { display: none; }
+.student-field-badge {
+    transition: opacity .15s, background .15s;
+    border: 2px solid transparent;
+}
+.student-field-cb:checked + input + .student-field-badge,
+.student-field-cb:checked ~ .student-field-badge {
+    border-color: #1e3a5f;
+}
+.student-field-label.disabled .student-field-badge {
+    opacity: .45;
+    pointer-events: none;
+}
 </style>
 }
 
@@ -262,6 +286,15 @@ document.querySelectorAll('.section-cb').forEach(function(cb) {
     var cardId = cb.dataset.card;
     var card = document.querySelector('.section-card[data-card="' + cardId + '"]');
     var icon = card.querySelector('.check-icon');
+    var fieldLabels = card.querySelectorAll('.student-field-label');
+
+    function syncFields(enabled) {
+        fieldLabels.forEach(function(lbl) {
+            lbl.classList.toggle('disabled', !enabled);
+            var fcb = lbl.querySelector('.student-field-cb');
+            if (fcb) fcb.disabled = !enabled;
+        });
+    }
 
     function sync() {
         if (cb.checked) {
@@ -273,6 +306,7 @@ document.querySelectorAll('.section-cb').forEach(function(cb) {
             icon.className = 'bi bi-circle ms-auto text-muted check-icon';
             icon.style.fontSize = '1.2rem';
         }
+        syncFields(cb.checked);
     }
 
     // Click anywhere on the card label toggles the checkbox
@@ -280,6 +314,19 @@ document.querySelectorAll('.section-cb').forEach(function(cb) {
         e.preventDefault();
         cb.checked = !cb.checked;
         sync();
+    });
+
+    // Toggle individual student field checkboxes
+    fieldLabels.forEach(function(lbl) {
+        lbl.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var fcb = lbl.querySelector('.student-field-cb');
+            if (fcb && !fcb.disabled) {
+                fcb.checked = !fcb.checked;
+                var badge = lbl.querySelector('.student-field-badge');
+                if (badge) badge.style.borderColor = fcb.checked ? '#1e3a5f' : 'transparent';
+            }
+        });
     });
 
     sync(); // initial state

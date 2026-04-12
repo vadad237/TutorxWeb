@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StudentApp.Web.Data;
 using StudentApp.Web.Models.Entities;
+using StudentApp.Web.Models.ViewModels;
 
 namespace StudentApp.Web.Services;
 
@@ -77,5 +78,105 @@ public class AttendanceService : IAttendanceService
             .Include(a => a.Student)
             .OrderByDescending(a => a.Date)
             .ToListAsync();
+    }
+
+    public async Task<AttendanceRecordVm?> GetAttendanceRecordAsync(int groupId, DateOnly date)
+    {
+        var group = await _db.Groups.FindAsync(groupId);
+        if (group == null) return null;
+
+        var records = await GetOrCreateForDateAsync(groupId, date);
+
+        var activeStudents = await _db.Students
+            .Where(s => s.GroupId == groupId && s.IsActive)
+            .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
+            .ToListAsync();
+
+        var existingMap = records.Where(r => r.Id > 0).ToDictionary(r => r.StudentId, r => r.Status);
+
+        return new AttendanceRecordVm
+        {
+            GroupId = groupId,
+            GroupName = group.Name,
+            Date = date,
+            Rows = activeStudents.Select(s => new StudentAttendanceRowVm
+            {
+                StudentId = s.Id,
+                FullName = s.FullName,
+                Status = existingMap.TryGetValue(s.Id, out var status) ? status : null
+            }).ToList()
+        };
+    }
+
+    public async Task<AttendanceHistoryVm?> GetAttendanceHistoryAsync(int groupId)
+    {
+        var group = await _db.Groups.FindAsync(groupId);
+        if (group == null) return null;
+
+        var students = await _db.Students
+            .Where(s => s.GroupId == groupId && s.IsActive)
+            .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
+            .ToListAsync();
+
+        var attendances = await _db.Attendances
+            .Where(a => a.GroupId == groupId)
+            .ToListAsync();
+
+        var dates = attendances
+            .Select(a => a.Date)
+            .Distinct()
+            .OrderByDescending(d => d)
+            .Take(30)
+            .OrderBy(d => d)
+            .ToList();
+
+        var statusMap = attendances.ToDictionary(a => (a.StudentId, a.Date), a => a.Status);
+
+        return new AttendanceHistoryVm
+        {
+            GroupId = groupId,
+            GroupName = group.Name,
+            Students = students.Select(s => new StudentSummaryVm
+            {
+                Id = s.Id,
+                FullName = s.FullName,
+                GroupId = s.GroupId
+            }).ToList(),
+            Dates = dates,
+            StatusMap = statusMap
+        };
+    }
+
+    public async Task<AttendanceSummaryVm?> GetAttendanceSummaryAsync(int groupId)
+    {
+        var group = await _db.Groups.FindAsync(groupId);
+        if (group == null) return null;
+
+        var students = await _db.Students
+            .Where(s => s.GroupId == groupId && s.IsActive)
+            .Include(s => s.Attendances)
+            .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
+            .ToListAsync();
+
+        return new AttendanceSummaryVm
+        {
+            GroupId = groupId,
+            GroupName = group.Name,
+            Items = students.Select(s =>
+            {
+                var total = s.Attendances.Count;
+                var present = s.Attendances.Count(a => a.Status == AttendanceStatus.Present);
+                return new AttendanceSummaryItemVm
+                {
+                    StudentId = s.Id,
+                    FullName = s.FullName,
+                    PresentCount = present,
+                    AbsentCount = s.Attendances.Count(a => a.Status == AttendanceStatus.Absent),
+                    ExcusedCount = s.Attendances.Count(a => a.Status == AttendanceStatus.Excused),
+                    TotalCount = total,
+                    AttendancePercentage = total > 0 ? Math.Round((double)present / total * 100, 1) : 0
+                };
+            }).ToList()
+        };
     }
 }

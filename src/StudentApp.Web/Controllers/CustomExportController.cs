@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using StudentApp.Web.Data;
 using StudentApp.Web.Models.ViewModels;
 using StudentApp.Web.Services;
 
@@ -8,20 +6,19 @@ namespace StudentApp.Web.Controllers;
 
 public class CustomExportController : Controller
 {
-    private readonly AppDbContext _db;
+    private readonly IGroupService _groupService;
     private readonly ICustomExportService _exportService;
 
-    public CustomExportController(AppDbContext db, ICustomExportService exportService)
+    public CustomExportController(IGroupService groupService, ICustomExportService exportService)
     {
-        _db = db;
+        _groupService = groupService;
         _exportService = exportService;
     }
 
     private async Task PopulateActiveGroupAsync()
     {
-        var groups = await _db.Groups.Where(g => !g.IsArchived)
-            .Select(g => new { g.Id, g.Name }).ToListAsync();
-        ViewBag.AllGroups = groups;
+        var groups = await _groupService.GetNonArchivedGroupsAsync();
+        ViewBag.AllGroups = groups.Select(g => new { g.Id, g.Name }).ToList();
         var activeId = HttpContext.Session.GetActiveGroup();
         if (activeId.HasValue)
         {
@@ -42,7 +39,7 @@ public class CustomExportController : Controller
             return View(new CustomExportIndexVm());
         }
 
-        var group = await _db.Groups.FindAsync(activeGroupId.Value);
+        var group = await _groupService.GetGroupByIdAsync(activeGroupId.Value);
         if (group == null)
         {
             ViewBag.NoGroupSelected = true;
@@ -76,10 +73,7 @@ public class CustomExportController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        var groupName = (await _db.Groups
-            .Where(g => g.Id == activeGroupId.Value)
-            .Select(g => g.Name)
-            .FirstOrDefaultAsync()) ?? "export";
+        var groupName = await _groupService.GetGroupNameAsync(activeGroupId.Value) ?? "export";
 
         var safeName = string.Concat(groupName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
         var timestamp = DateTime.Now.ToString("yyyyMMdd");

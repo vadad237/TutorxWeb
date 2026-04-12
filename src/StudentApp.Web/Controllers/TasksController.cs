@@ -1,17 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using StudentApp.Web.Data;
-using StudentApp.Web.Models.Entities;
+using StudentApp.Web.Services;
 
 namespace StudentApp.Web.Controllers;
 
 public class TasksController : Controller
 {
-    private readonly AppDbContext _db;
+    private readonly ITaskService _taskService;
 
-    public TasksController(AppDbContext db)
+    public TasksController(ITaskService taskService)
     {
-        _db = db;
+        _taskService = taskService;
     }
 
     [HttpPost]
@@ -20,16 +18,7 @@ public class TasksController : Controller
         if (string.IsNullOrWhiteSpace(title))
             return Json(new { success = false, message = "Title is required." });
 
-        var task = new TaskItem
-        {
-            Title = title.Trim(),
-            ActivityId = activityId,
-            PresentationDate = presentationDate,
-            IsPresentation = isPresentation
-        };
-        _db.TaskItems.Add(task);
-        await _db.SaveChangesAsync();
-
+        var task = await _taskService.CreateTaskAsync(title, activityId, presentationDate, isPresentation);
         return Json(new { success = true, taskId = task.Id, title = task.Title });
     }
 
@@ -38,23 +27,17 @@ public class TasksController : Controller
     {
         if (string.IsNullOrWhiteSpace(title))
             return Json(new { success = false, message = "Title required." });
-        var task = await _db.TaskItems.FindAsync(id);
-        if (task == null) return Json(new { success = false, message = "Task not found." });
-        task.Title = title.Trim();
-        await _db.SaveChangesAsync();
+
+        var (success, message) = await _taskService.SetTitleAsync(id, title);
+        if (!success) return Json(new { success = false, message });
         return Json(new { success = true });
     }
 
     [HttpPost]
     public async Task<IActionResult> SetDate(int id, DateTime? presentationDate)
     {
-        var task = await _db.TaskItems.FindAsync(id);
-        if (task == null)
-            return Json(new { success = false, message = "Task not found." });
-
-        task.PresentationDate = presentationDate;
-        await _db.SaveChangesAsync();
-
+        var (success, message) = await _taskService.SetDateAsync(id, presentationDate);
+        if (!success) return Json(new { success = false, message });
         return Json(new { success = true });
     }
 
@@ -62,36 +45,16 @@ public class TasksController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetPresentationStudents(int taskId, int[]? studentIds)
     {
-        var existing = _db.PresentationStudents.Where(ps => ps.TaskItemId == taskId);
-        _db.PresentationStudents.RemoveRange(existing);
-        await _db.SaveChangesAsync();
-
-        if (studentIds != null)
-        {
-            foreach (var sid in studentIds)
-                _db.PresentationStudents.Add(new PresentationStudent { TaskItemId = taskId, StudentId = sid });
-            await _db.SaveChangesAsync();
-        }
-
+        await _taskService.SetPresentationStudentsAsync(taskId, studentIds);
         return Ok();
     }
 
     [HttpPost]
     public async Task<IActionResult> Delete(int id)
     {
-        var task = await _db.TaskItems.FindAsync(id);
-        if (task == null)
+        var (found, activityId) = await _taskService.DeleteTaskAsync(id);
+        if (!found)
             return Json(new { success = false, message = "Task not found." });
-
-        var activityId = task.ActivityId;
-
-        // Clear Restrict FK children before removing the task
-        await _db.PresentationStudents.Where(ps => ps.TaskItemId == id).ExecuteDeleteAsync();
-        await _db.Evaluations.Where(e => e.TaskItemId == id).ExecuteDeleteAsync();
-        await _db.Assignments.Where(a => a.TaskItemId == id).ExecuteDeleteAsync();
-
-        _db.TaskItems.Remove(task);
-        await _db.SaveChangesAsync();
 
         return Json(new { success = true, activityId });
     }
@@ -99,34 +62,8 @@ public class TasksController : Controller
     [HttpGet]
     public async Task<IActionResult> GetEligiblePresentationStudents(int taskId, bool includeAlreadyAssigned = false)
     {
-        var task = await _db.TaskItems
-            .Include(t => t.Activity).ThenInclude(a => a.Assignments).ThenInclude(a => a.Student)
-            .Include(t => t.PresentationStudents)
-            .FirstOrDefaultAsync(t => t.Id == taskId && t.IsPresentation);
-
-        if (task == null) return NotFound();
-
-        var assignedToThis = task.PresentationStudents.Select(ps => ps.StudentId).ToHashSet();
-
-        var pool = task.Activity.Assignments
-            .Select(a => a.Student)
-            .Where(s => s.IsActive && !assignedToThis.Contains(s.Id));
-
-        if (!includeAlreadyAssigned)
-        {
-            var assignedToAnyPres = await _db.PresentationStudents
-                .Where(ps => ps.TaskItem.ActivityId == task.ActivityId)
-                .Select(ps => ps.StudentId)
-                .Distinct()
-                .ToListAsync();
-
-            pool = pool.Where(s => !assignedToAnyPres.Contains(s.Id));
-        }
-
-        var eligible = pool
-            .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
-            .Select(s => new { s.Id, FullName = s.FirstName + " " + s.LastName })
-            .ToList();
+        var eligible = await _taskService.GetEligiblePresentationStudentsAsync(taskId, includeAlreadyAssigned);
+        if (eligible == null) return NotFound();
 
         return Json(eligible);
     }

@@ -4,6 +4,11 @@ public class CustomExportRequestVm
 {
     public int GroupId { get; set; }
     public bool IncludeStudents { get; set; } = true;
+    public bool IncludeStudentFirstName { get; set; } = true;
+    public bool IncludeStudentLastName { get; set; } = true;
+    public bool IncludeStudentCardNumber { get; set; } = true;
+    public bool IncludeStudentYear { get; set; } = true;
+    public bool IncludeStudentEmail { get; set; } = true;
     public bool IncludeAttendance { get; set; }
     public bool IncludeActivities { get; set; }
     public bool IncludeTasks { get; set; }

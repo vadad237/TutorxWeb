@@ -49,6 +49,12 @@ builder.Services.AddSession(options =>
 });
 
 // Register services
+builder.Services.AddScoped<IGroupService, GroupService>();
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IActivityService, ActivityService>();
+builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<IEvaluationService, EvaluationService>();
+builder.Services.AddScoped<IActivityAttributeService, ActivityAttributeService>();
 builder.Services.AddScoped<IDrawService, DrawService>();
 builder.Services.AddScoped<IImportService, ImportService>();
 builder.Services.AddScoped<IExportService, ExportService>();

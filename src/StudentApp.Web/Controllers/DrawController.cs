@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using StudentApp.Web.Data;
 using StudentApp.Web.Models.ViewModels;
 using StudentApp.Web.Services;
 
@@ -8,22 +6,23 @@ namespace StudentApp.Web.Controllers;
 
 public class DrawController : Controller
 {
-    private readonly AppDbContext _db;
+    private readonly IGroupService _groupService;
+    private readonly IActivityService _activityService;
     private readonly IDrawService _drawService;
     private readonly IAssignmentService _assignmentService;
 
-    public DrawController(AppDbContext db, IDrawService drawService, IAssignmentService assignmentService)
+    public DrawController(IGroupService groupService, IActivityService activityService, IDrawService drawService, IAssignmentService assignmentService)
     {
-        _db = db;
+        _groupService = groupService;
+        _activityService = activityService;
         _drawService = drawService;
         _assignmentService = assignmentService;
     }
 
     private async Task PopulateActiveGroupAsync()
     {
-        var groups = await _db.Groups.Where(g => !g.IsArchived)
-            .Select(g => new { g.Id, g.Name }).ToListAsync();
-        ViewBag.AllGroups = groups;
+        var groups = await _groupService.GetNonArchivedGroupsAsync();
+        ViewBag.AllGroups = groups.Select(g => new { g.Id, g.Name }).ToList();
         var activeId = HttpContext.Session.GetActiveGroup();
         if (activeId.HasValue)
             ViewData["ActiveGroupName"] = groups.FirstOrDefault(g => g.Id == activeId.Value)?.Name;
@@ -40,42 +39,19 @@ public class DrawController : Controller
             return View((DrawIndexVm?)null);
         }
 
-        var group = await _db.Groups.FindAsync(gid.Value);
+        var group = await _groupService.GetGroupByIdAsync(gid.Value);
         if (group == null) return NotFound();
 
-        var allNames = await _db.Students
-            .Where(s => s.GroupId == gid.Value && s.IsActive)
-            .Select(s => s.FirstName + " " + s.LastName)
-            .ToListAsync();
-
+        var allNames = await _activityService.GetActiveStudentNamesForGroupAsync(gid.Value);
         var bagStatus = await _drawService.GetBagStatusAsync(gid.Value);
         var history = await _drawService.GetHistoryAsync(gid.Value, 1);
 
-        var allGroups = await _db.Groups.Where(g => !g.IsArchived)
+        var allGroups = (await _groupService.GetNonArchivedGroupsAsync())
             .Select(g => new GroupSummaryVm { Id = g.Id, Name = g.Name })
-            .ToListAsync();
+            .ToList();
 
-        var activities = await _db.Activities
-            .Where(a => a.GroupId == gid.Value && !a.IsArchived)
-            .OrderBy(a => a.Name)
-            .Select(a => new DrawActivityVm
-            {
-                Id = a.Id,
-                Name = a.Name
-            })
-            .ToListAsync();
-
-        var presentations = await _db.TaskItems
-            .Where(t => t.IsPresentation && t.Activity.GroupId == gid.Value && !t.Activity.IsArchived)
-            .OrderBy(t => t.Activity.Name).ThenBy(t => t.Title)
-            .Select(t => new DrawPresentationVm
-            {
-                Id = t.Id,
-                Title = t.Title,
-                ActivityId = t.ActivityId,
-                ActivityName = t.Activity.Name
-            })
-            .ToListAsync();
+        var activities = await _activityService.GetActivitiesForGroupAsync(gid.Value);
+        var presentations = await _activityService.GetPresentationsForGroupAsync(gid.Value);
 
         var vm = new DrawIndexVm
         {
@@ -157,12 +133,7 @@ public class DrawController : Controller
     [HttpGet]
     public async Task<IActionResult> History(int? groupId, int page = 1)
     {
-        var groups = await _db.Groups.Where(g => !g.IsArchived)
-            .Select(g => new { g.Id, g.Name }).ToListAsync();
-        ViewBag.AllGroups = groups;
-        var activeId = HttpContext.Session.GetActiveGroup();
-        if (activeId.HasValue)
-            ViewData["ActiveGroupName"] = groups.FirstOrDefault(g => g.Id == activeId.Value)?.Name;
+        await PopulateActiveGroupAsync();
 
         var gid = groupId ?? HttpContext.Session.GetActiveGroup();
         if (!gid.HasValue)
@@ -171,7 +142,7 @@ public class DrawController : Controller
             return RedirectToAction("Index", "Groups");
         }
 
-        var group = await _db.Groups.FindAsync(gid.Value);
+        var group = await _groupService.GetGroupByIdAsync(gid.Value);
         if (group == null) return NotFound();
 
         const int pageSize = 25;

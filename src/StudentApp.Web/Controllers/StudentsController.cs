@@ -1,8 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using StudentApp.Web.Data;
 using StudentApp.Web.Models.DTOs;
-using StudentApp.Web.Models.Entities;
 using StudentApp.Web.Models.ViewModels;
 using StudentApp.Web.Services;
 
@@ -10,20 +7,21 @@ namespace StudentApp.Web.Controllers;
 
 public class StudentsController : Controller
 {
-    private readonly AppDbContext _db;
+    private readonly IGroupService _groupService;
+    private readonly IStudentService _studentService;
     private readonly IImportService _importService;
 
-    public StudentsController(AppDbContext db, IImportService importService)
+    public StudentsController(IGroupService groupService, IStudentService studentService, IImportService importService)
     {
-        _db = db;
+        _groupService = groupService;
+        _studentService = studentService;
         _importService = importService;
     }
 
     private async Task PopulateActiveGroupAsync()
     {
-        var groups = await _db.Groups.Where(g => !g.IsArchived)
-            .Select(g => new { g.Id, g.Name }).ToListAsync();
-        ViewBag.AllGroups = groups;
+        var groups = await _groupService.GetNonArchivedGroupsAsync();
+        ViewBag.AllGroups = groups.Select(g => new { g.Id, g.Name }).ToList();
         var activeId = HttpContext.Session.GetActiveGroup();
         if (activeId.HasValue)
         {
@@ -42,31 +40,13 @@ public class StudentsController : Controller
             return View(new List<StudentSummaryVm>());
         }
 
-        var group = await _db.Groups.FindAsync(gid.Value);
-        if (group == null) return NotFound();
+        var groupName = await _groupService.GetGroupNameAsync(gid.Value);
+        if (groupName == null) return NotFound();
 
         ViewBag.GroupId = gid.Value;
-        ViewBag.GroupName = group.Name;
+        ViewBag.GroupName = groupName;
 
-        var students = await _db.Students
-            .Where(s => s.GroupId == gid.Value)
-            .Include(s => s.Attendances)
-            .Include(s => s.Evaluations)
-            .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
-            .Select(s => new StudentSummaryVm
-            {
-                Id = s.Id,
-                FullName = s.FirstName + " " + s.LastName,
-                Email = s.Email,
-                CardNumber = s.CardNumber,
-                Year = s.Year,
-                IsActive = s.IsActive,
-                AbsenceCount = s.Attendances.Count(a => a.Status == AttendanceStatus.Absent),
-                AvgScore = s.Evaluations.Any() ? s.Evaluations.Average(e => e.Score) : null,
-                GroupId = s.GroupId
-            })
-            .ToListAsync();
-
+        var students = await _studentService.GetStudentsByGroupAsync(gid.Value);
         return View(students);
     }
 
@@ -74,9 +54,9 @@ public class StudentsController : Controller
     public async Task<IActionResult> Create(int groupId)
     {
         await PopulateActiveGroupAsync();
-        var group = await _db.Groups.FindAsync(groupId);
-        if (group == null) return NotFound();
-        ViewBag.GroupName = group.Name;
+        var groupName = await _groupService.GetGroupNameAsync(groupId);
+        if (groupName == null) return NotFound();
+        ViewBag.GroupName = groupName;
 
         return View(new StudentCreateVm { GroupId = groupId });
     }
@@ -88,22 +68,12 @@ public class StudentsController : Controller
         if (!ModelState.IsValid)
         {
             await PopulateActiveGroupAsync();
-            var group = await _db.Groups.FindAsync(vm.GroupId);
-            ViewBag.GroupName = group?.Name;
+            var groupName = await _groupService.GetGroupNameAsync(vm.GroupId);
+            ViewBag.GroupName = groupName;
             return View(vm);
         }
 
-        var student = new Student
-        {
-            FirstName = vm.FirstName.Trim(),
-            LastName = vm.LastName.Trim(),
-            Email = vm.Email?.Trim(),
-            CardNumber = vm.CardNumber?.Trim(),
-            Year = vm.Year,
-            GroupId = vm.GroupId
-        };
-        _db.Students.Add(student);
-        await _db.SaveChangesAsync();
+        var student = await _studentService.CreateStudentAsync(vm.FirstName, vm.LastName, vm.Email, vm.CardNumber, vm.Year, vm.GroupId);
 
         TempData["Success"] = $"Študent '{student.FullName}' bol úspešne pridaný.";
         return RedirectToAction(nameof(Index), new { groupId = vm.GroupId });
@@ -113,7 +83,7 @@ public class StudentsController : Controller
     public async Task<IActionResult> Edit(int id)
     {
         await PopulateActiveGroupAsync();
-        var student = await _db.Students.Include(s => s.Group).FirstOrDefaultAsync(s => s.Id == id);
+        var student = await _studentService.GetStudentWithGroupAsync(id);
         if (student == null) return NotFound();
         ViewBag.GroupName = student.Group.Name;
 
@@ -142,16 +112,8 @@ public class StudentsController : Controller
             return View(vm);
         }
 
-        var student = await _db.Students.FindAsync(id);
+        var student = await _studentService.UpdateStudentAsync(id, vm.FirstName, vm.LastName, vm.Email, vm.CardNumber, vm.Year, vm.IsActive);
         if (student == null) return NotFound();
-
-        student.FirstName = vm.FirstName.Trim();
-        student.LastName = vm.LastName.Trim();
-        student.Email = vm.Email?.Trim();
-        student.CardNumber = vm.CardNumber?.Trim();
-        student.Year = vm.Year;
-        student.IsActive = vm.IsActive;
-        await _db.SaveChangesAsync();
 
         TempData["Success"] = $"Študent '{student.FullName}' bol úspešne aktualizovaný.";
         return RedirectToAction(nameof(Index), new { groupId = vm.GroupId });
@@ -161,59 +123,8 @@ public class StudentsController : Controller
     public async Task<IActionResult> Details(int id)
     {
         await PopulateActiveGroupAsync();
-        var student = await _db.Students
-            .Include(s => s.Group)
-            .Include(s => s.DrawHistories)
-            .Include(s => s.Attendances)
-            .Include(s => s.Evaluations).ThenInclude(e => e.TaskItem).ThenInclude(t => t.Activity)
-            .Include(s => s.Assignments).ThenInclude(a => a.Activity)
-            .AsSplitQuery()
-            .FirstOrDefaultAsync(s => s.Id == id);
-
-        if (student == null) return NotFound();
-
-        var vm = new StudentDetailsVm
-        {
-            Id = student.Id,
-            FirstName = student.FirstName,
-            LastName = student.LastName,
-            FullName = student.FullName,
-            Email = student.Email,
-            CardNumber = student.CardNumber,
-            Year = student.Year,
-            IsActive = student.IsActive,
-            GroupId = student.GroupId,
-            GroupName = student.Group.Name,
-            CreatedAt = student.CreatedAt,
-            DrawHistory = student.DrawHistories
-                .OrderByDescending(d => d.DrawnAt)
-                .Select(d => new DrawHistoryDto(student.FullName, d.DrawnAt, d.CycleNumber))
-                .ToList(),
-            AttendanceSummary = new AttendanceSummaryItemVm
-            {
-                StudentId = student.Id,
-                FullName = student.FullName,
-                PresentCount = student.Attendances.Count(a => a.Status == AttendanceStatus.Present),
-                AbsentCount = student.Attendances.Count(a => a.Status == AttendanceStatus.Absent),
-                ExcusedCount = student.Attendances.Count(a => a.Status == AttendanceStatus.Excused),
-                TotalCount = student.Attendances.Count
-            },
-            Evaluations = student.Evaluations
-                .OrderBy(e => e.TaskItem.Activity.Name).ThenBy(e => e.TaskItem.Title)
-                .Select(e => new EvaluationItemVm
-                {
-                    Id = e.Id,
-                    TaskName = e.TaskItem.Activity.Name + " — " + e.TaskItem.Title,
-                    Score = e.Score,
-                    Comment = e.Comment,
-                    EvaluatedAt = e.EvaluatedAt
-                }).ToList(),
-            AssignedActivities = student.Assignments
-                .Where(a => !a.Activity.IsArchived)
-                .OrderBy(a => a.Activity.Name)
-                .Select(a => new AssignedActivityVm(a.ActivityId, a.Activity.Name))
-                .ToList()
-        };
+        var vm = await _studentService.GetStudentDetailsAsync(id);
+        if (vm == null) return NotFound();
 
         return View(vm);
     }
@@ -221,20 +132,9 @@ public class StudentsController : Controller
     [HttpPost]
     public async Task<IActionResult> Delete(int id)
     {
-        var student = await _db.Students.FindAsync(id);
-        if (student == null)
+        var deleted = await _studentService.DeleteStudentAsync(id);
+        if (!deleted)
             return Json(new { success = false, message = "Student not found." });
-
-        // Clear all Restrict FK children before removing the student
-        await _db.StudentAttributeValues.Where(v => v.StudentId == id).ExecuteDeleteAsync();
-        await _db.PresentationStudents.Where(ps => ps.StudentId == id).ExecuteDeleteAsync();
-        await _db.Evaluations.Where(e => e.StudentId == id).ExecuteDeleteAsync();
-        await _db.Assignments.Where(a => a.StudentId == id).ExecuteDeleteAsync();
-        await _db.DrawHistories.Where(d => d.StudentId == id).ExecuteDeleteAsync();
-        await _db.Attendances.Where(a => a.StudentId == id).ExecuteDeleteAsync();
-
-        _db.Students.Remove(student);
-        await _db.SaveChangesAsync();
 
         return Json(new { success = true });
     }
@@ -246,28 +146,15 @@ public class StudentsController : Controller
         if (studentIds == null || studentIds.Length == 0)
             return Json(new { success = false, message = "No students selected." });
 
-        var ids = studentIds.ToList();
-
-        await _db.StudentAttributeValues.Where(v => ids.Contains(v.StudentId)).ExecuteDeleteAsync();
-        await _db.PresentationStudents.Where(ps => ids.Contains(ps.StudentId)).ExecuteDeleteAsync();
-        await _db.Evaluations.Where(e => ids.Contains(e.StudentId)).ExecuteDeleteAsync();
-        await _db.Assignments.Where(a => ids.Contains(a.StudentId)).ExecuteDeleteAsync();
-        await _db.DrawHistories.Where(d => ids.Contains(d.StudentId)).ExecuteDeleteAsync();
-        await _db.Attendances.Where(a => ids.Contains(a.StudentId)).ExecuteDeleteAsync();
-
-        await _db.Students.Where(s => ids.Contains(s.Id)).ExecuteDeleteAsync();
-
+        await _studentService.BulkDeleteStudentsAsync(studentIds.ToList());
         return Json(new { success = true });
     }
 
     [HttpPost]
     public async Task<IActionResult> ToggleActive(int id)
     {
-        var student = await _db.Students.FindAsync(id);
+        var student = await _studentService.ToggleActiveAsync(id);
         if (student == null) return NotFound();
-
-        student.IsActive = !student.IsActive;
-        await _db.SaveChangesAsync();
 
         TempData["Success"] = $"Študent '{student.FullName}' je teraz {(student.IsActive ? "aktívny" : "neaktívny")}.";
         return RedirectToAction(nameof(Index), new { groupId = student.GroupId });
@@ -280,10 +167,7 @@ public class StudentsController : Controller
         if (request?.StudentIds == null || request.StudentIds.Length == 0)
             return Json(new { success = false, message = "No students selected." });
 
-        var ids = request.StudentIds.ToList();
-        await _db.Students.Where(s => ids.Contains(s.Id))
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsActive, request.Active));
-
+        await _studentService.BulkSetActiveAsync(request.StudentIds.ToList(), request.Active);
         return Json(new { success = true });
     }
 
@@ -291,10 +175,10 @@ public class StudentsController : Controller
     public async Task<IActionResult> Import(int groupId)
     {
         await PopulateActiveGroupAsync();
-        var group = await _db.Groups.FindAsync(groupId);
-        if (group == null) return NotFound();
+        var groupName = await _groupService.GetGroupNameAsync(groupId);
+        if (groupName == null) return NotFound();
 
-        return View(new ImportUploadVm { GroupId = groupId, GroupName = group.Name });
+        return View(new ImportUploadVm { GroupId = groupId, GroupName = groupName });
     }
 
     [HttpPost]
