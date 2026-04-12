@@ -3,7 +3,6 @@ using StudentApp.Web.Services;
 
 namespace StudentApp.Web.Controllers;
 
-[IgnoreAntiforgeryToken]
 public class ActivityAttributesController : Controller
 {
     private readonly IActivityAttributeService _attributeService;

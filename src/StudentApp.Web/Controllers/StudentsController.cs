@@ -62,7 +62,6 @@ public class StudentsController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(StudentCreateVm vm)
     {
         if (!ModelState.IsValid)
@@ -101,7 +100,6 @@ public class StudentsController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, StudentEditVm vm)
     {
         if (id != vm.Id) return BadRequest();
@@ -140,7 +138,6 @@ public class StudentsController : Controller
     }
 
     [HttpPost]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> BulkDelete([FromBody] int[]? studentIds)
     {
         if (studentIds == null || studentIds.Length == 0)
@@ -161,7 +158,6 @@ public class StudentsController : Controller
     }
 
     [HttpPost]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> BulkSetActive([FromBody] BulkSetActiveRequest? request)
     {
         if (request?.StudentIds == null || request.StudentIds.Length == 0)
@@ -182,7 +178,6 @@ public class StudentsController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ImportPreview(IFormFile file, int groupId)
     {
         await PopulateActiveGroupAsync();
@@ -224,7 +219,6 @@ public class StudentsController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ImportConfirm(ImportConfirmVm vm)
     {
         var rowsToImport = vm.Rows

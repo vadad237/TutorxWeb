@@ -57,7 +57,6 @@ public class CustomExportController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Generate(CustomExportRequestVm request)
     {
         var activeGroupId = HttpContext.Session.GetActiveGroup();

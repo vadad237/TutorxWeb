@@ -42,7 +42,6 @@ public class TasksController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetPresentationStudents(int taskId, int[]? studentIds)
     {
         await _taskService.SetPresentationStudentsAsync(taskId, studentIds);

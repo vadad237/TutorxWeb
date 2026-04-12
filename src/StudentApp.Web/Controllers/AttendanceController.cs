@@ -47,7 +47,6 @@ public class AttendanceController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Record(AttendanceRecordVm vm)
     {
         var records = vm.Rows
@@ -60,7 +59,6 @@ public class AttendanceController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveSingle(int groupId, DateOnly date, int studentId, AttendanceStatus status)
     {
         await _attendanceService.SaveAttendanceAsync(groupId, date, [(studentId, status)]);

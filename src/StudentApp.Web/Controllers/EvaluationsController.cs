@@ -68,7 +68,6 @@ public class EvaluationsController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(EvaluationCreateVm vm)
     {
         if (!ModelState.IsValid)
@@ -95,7 +94,6 @@ public class EvaluationsController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, EvaluationEditVm vm)
     {
         if (id != vm.Id) return BadRequest();

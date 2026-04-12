@@ -74,7 +74,6 @@ public class ActivitiesController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(ActivityCreateVm vm)
     {
         var activeGroupId = HttpContext.Session.GetActiveGroup() ?? (vm.GroupId > 0 ? vm.GroupId : (int?)null);
@@ -119,7 +118,6 @@ public class ActivitiesController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, ActivityEditVm vm)
     {
         if (id != vm.Id) return BadRequest();
@@ -181,7 +179,6 @@ public class ActivitiesController : Controller
     }
 
     [HttpPost]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> BulkAssign([FromBody] int[]? activityIds)
     {
         if (activityIds == null || activityIds.Length == 0)
@@ -198,7 +195,6 @@ public class ActivitiesController : Controller
     }
 
     [HttpPost]
-    [IgnoreAntiforgeryToken]
     public async Task<IActionResult> BulkDelete([FromBody] int[]? activityIds)
     {
         if (activityIds == null || activityIds.Length == 0)
@@ -218,7 +214,6 @@ public class ActivitiesController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> DrawForActivity(int activityId, int count)
     {
         try
@@ -314,7 +309,6 @@ public class ActivitiesController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetActivityAssignments(int activityId, int[]? studentIds)
     {
         var found = await _activityService.SetActivityAssignmentsAsync(activityId, studentIds);

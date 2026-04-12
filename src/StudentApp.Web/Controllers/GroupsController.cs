@@ -42,7 +42,6 @@ public class GroupsController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(GroupCreateVm vm)
     {
         if (!ModelState.IsValid)
@@ -80,7 +79,6 @@ public class GroupsController : Controller
     }
 
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, GroupEditVm vm)
     {
         if (id != vm.Id) return BadRequest();
