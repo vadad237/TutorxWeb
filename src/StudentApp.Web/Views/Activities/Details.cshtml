@@ -81,7 +81,7 @@
         <h5>Pridať úlohu</h5>
         <div class="input-group">
             <input type="text" id="taskTitle" class="form-control" placeholder="Názov úlohy..." maxlength="300" />
-            <button type="button" id="addTaskBtn" class="btn btn-primary">Pridať úlohu</button>
+            <button type="button" id="addTaskBtn" class="btn btn-primary" data-activity-id="@Model.Id">Pridať úlohu</button>
         </div>
     </div>
 </div>
@@ -126,7 +126,7 @@ else
         <div class="input-group">
             <input type="text" id="presTitle" class="form-control" placeholder="Názov prezentácie..." maxlength="300" />
             <input type="date" id="presDate" class="form-control" style="max-width:180px" />
-            <button type="button" id="addPresBtn" class="btn btn-success">Pridať prezentáciu</button>
+            <button type="button" id="addPresBtn" class="btn btn-success" data-activity-id="@Model.Id">Pridať prezentáciu</button>
         </div>
     </div>
 </div>
@@ -153,9 +153,10 @@ else
                 <th style="width:2.5rem">
                     <input type="checkbox" id="presSelectAll" class="form-check-input" title="Označiť všetko" />
                 </th>
-                <th style="width:28%">Názov</th>
-                <th style="width:18%">Dátum</th>
-                <th>Študenti</th>
+                <th style="width:22%">Názov</th>
+                <th style="width:14%">Dátum</th>
+                <th>Prezentujúci</th>
+                <th>Náhradník</th>
                 <th style="width:90px">Akcie</th>
             </tr>
         </thead>
@@ -177,10 +178,10 @@ else
                 </td>
                 <td>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <div class="pres-badge-area d-flex flex-wrap gap-1" id="pres-badges-@p.TaskId">
-                            @if (p.PresentationStudents.Any())
+                        <div class="pres-badge-area d-flex flex-wrap gap-1" id="pres-presentee-badges-@p.TaskId">
+                            @if (p.PresenteeStudents.Any())
                             {
-                                @foreach (var ps in p.PresentationStudents)
+                                @foreach (var ps in p.PresenteeStudents)
                                 {
                                     <span class="badge bg-primary">@ps.FullName</span>
                                 }
@@ -192,21 +193,60 @@ else
                         </div>
                         @if (Model.AssignedStudents.Any())
                         {
-                            <div class="dropdown pres-student-dropdown" data-task-id="@p.TaskId">
+                            <div class="dropdown pres-role-dropdown" data-task-id="@p.TaskId" data-role="0" data-badge-area="pres-presentee-badges-@p.TaskId">
                                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
                                         data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                                     <i class="bi bi-people"></i>
                                 </button>
                                 <ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">
-                                    @Html.AntiForgeryToken()
                                     @foreach (var s in Model.AssignedStudents)
                                     {
-                                        var isChecked = p.PresentationStudents.Any(ps => ps.StudentId == s.StudentId);
+                                        var isPresentee = p.PresenteeStudents.Any(ps => ps.StudentId == s.StudentId);
                                         <li>
                                             <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">
                                                 <input class="form-check-input mt-0 flex-shrink-0 pres-student-cb"
                                                        type="checkbox" value="@s.StudentId" data-name="@s.FullName"
-                                                       @(isChecked ? "checked" : "") />
+                                                       @(isPresentee ? "checked" : "") />
+                                                @s.FullName
+                                            </label>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="pres-badge-area d-flex flex-wrap gap-1" id="pres-sub-badges-@p.TaskId">
+                            @if (p.SubstitutionStudents.Any())
+                            {
+                                @foreach (var ps in p.SubstitutionStudents)
+                                {
+                                    <span class="badge bg-warning text-dark">@ps.FullName</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Žiadni</span>
+                            }
+                        </div>
+                        @if (Model.AssignedStudents.Any())
+                        {
+                            <div class="dropdown pres-role-dropdown" data-task-id="@p.TaskId" data-role="1" data-badge-area="pres-sub-badges-@p.TaskId">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                        data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                    <i class="bi bi-people"></i>
+                                </button>
+                                <ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">
+                                    @foreach (var s in Model.AssignedStudents)
+                                    {
+                                        var isSub = p.SubstitutionStudents.Any(ps => ps.StudentId == s.StudentId);
+                                        <li>
+                                            <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">
+                                                <input class="form-check-input mt-0 flex-shrink-0 pres-student-cb"
+                                                       type="checkbox" value="@s.StudentId" data-name="@s.FullName"
+                                                       @(isSub ? "checked" : "") />
                                                 @s.FullName
                                             </label>
                                         </li>
@@ -218,8 +258,16 @@ else
                 </td>
                 <td>
                     <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-primary btn-draw-pres"
+                                data-id="@p.TaskId" data-role="0" title="Žrebovanie – prezentujúci">
+                            <i class="bi bi-person-fill"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-warning btn-draw-pres"
+                                data-id="@p.TaskId" data-role="1" title="Žrebovanie – náhradník">
+                            <i class="bi bi-person-fill-up"></i>
+                        </button>
                         <button type="button" class="btn btn-outline-secondary btn-draw-pres"
-                                data-id="@p.TaskId" title="Žrebovanie">
+                                data-id="@p.TaskId" data-role="both" title="Žrebovanie – obaja">
                             <i class="bi bi-dice-3"></i>
                         </button>
                         <button type="button" class="btn btn-outline-danger btn-delete-task" data-id="@p.TaskId"
@@ -241,7 +289,7 @@ else
     <h4 class="mb-0">Ostatné</h4>
     <div class="input-group input-group-sm" style="max-width:260px">
         <input type="text" id="newAttrName" class="form-control" placeholder="Názov nového atribútu…" maxlength="200" />
-        <button type="button" id="addAttrBtn" class="btn btn-outline-primary">
+        <button type="button" id="addAttrBtn" class="btn btn-outline-primary" data-activity-id="@Model.Id">
             <i class="bi bi-plus-lg"></i> Pridať
         </button>
     </div>
@@ -373,433 +421,4 @@ else
         </div>
     </div>
 </div>
-
-@section Scripts {
-<script>
-// ── Activity-level student assignment ──────────────────────────────────────
-(function() {
-    var form = document.getElementById('activityAssignForm');
-    if (!form) return;
-    var activityId = form.dataset.activityId;
-    var token = form.querySelector('input[name="__RequestVerificationToken"]').value;
-
-    form.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
-        cb.addEventListener('change', function() {
-            var checked = Array.from(form.querySelectorAll('input[type="checkbox"]:checked'));
-            var body = '__RequestVerificationToken=' + encodeURIComponent(token)
-                + '&activityId=' + activityId;
-            checked.forEach(function(c) { body += '&studentIds=' + encodeURIComponent(c.value); });
-
-            fetch('/Activities/SetActivityAssignments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: body
-            }).then(function(r) {
-                if (r.ok) {
-                    var badgeArea = document.getElementById('activity-badge-area');
-                    if (checked.length === 0) {
-                        badgeArea.innerHTML = '<p class="text-muted small mb-0">Žiadni študenti zatiaľ neboli priradení.</p>';
-                    } else {
-                        var html = '<div class="d-flex flex-wrap gap-1">';
-                        checked.forEach(function(c) {
-                            html += '<span class="badge bg-info text-dark">' + c.dataset.name + '</span>';
-                        });
-                        html += '</div>';
-                        badgeArea.innerHTML = html;
-                    }
-                } else { alert('Nepodarilo sa uložiť priradenie.'); }
-            });
-        });
-    });
-})();
-
-// ── Add Task ───────────────────────────────────────────────────────────────
-document.getElementById('addTaskBtn').addEventListener('click', function() {
-    var title = document.getElementById('taskTitle').value.trim();
-    if (!title) return;
-    fetch('/Tasks/Create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'title=' + encodeURIComponent(title) + '&activityId=@Model.Id&isPresentation=false'
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) { if (d.success) location.reload(); else alert(d.message); });
-});
-
-document.getElementById('taskTitle').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addTaskBtn').click(); }
-});
-
-// ── Delete task or presentation ────────────────────────────────────────────
-document.querySelectorAll('.btn-delete-task').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        var taskId = this.dataset.id;
-        var modalEl  = document.getElementById('confirmModal');
-        var modal    = bootstrap.Modal.getOrCreateInstance(modalEl);
-        document.getElementById('confirmModalTitle').textContent = 'Vymazať položku';
-        document.getElementById('confirmModalBody').textContent  = 'Vymazať túto položku? Túto akciu nemožno vrátiť.';
-        var actionBtn = document.getElementById('confirmModalAction');
-        var newBtn = actionBtn.cloneNode(true);
-        actionBtn.parentNode.replaceChild(newBtn, actionBtn);
-        newBtn.addEventListener('click', function () {
-            modal.hide();
-            fetch('/Tasks/Delete/' + taskId, { method: 'POST' })
-                .then(function(r) { return r.json(); })
-                .then(function(d) { if (d.success) location.reload(); else alert(d.message); });
-        });
-        modal.show();
-    });
-});
-
-// ── Add Presentation ───────────────────────────────────────────────────────
-document.getElementById('addPresBtn').addEventListener('click', function() {
-    var title = document.getElementById('presTitle').value.trim();
-    if (!title) return;
-    var date = document.getElementById('presDate').value;
-    var body = 'title=' + encodeURIComponent(title) + '&activityId=@Model.Id&isPresentation=true';
-    if (date) body += '&presentationDate=' + encodeURIComponent(date);
-    fetch('/Tasks/Create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) { if (d.success) location.reload(); else alert(d.message); });
-});
-
-document.getElementById('presTitle').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addPresBtn').click(); }
-});
-
-// ── Presentation title auto-save on blur ───────────────────────────────────
-document.querySelectorAll('.pres-title-input').forEach(function(input) {
-    input.addEventListener('blur', function() {
-        var title = this.value.trim();
-        if (!title) { this.value = this.defaultValue; return; }
-        fetch('/Tasks/SetTitle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'id=' + this.dataset.id + '&title=' + encodeURIComponent(title)
-        });
-    });
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
-    });
-});
-
-// ── Presentation date auto-save ────────────────────────────────────────────
-document.querySelectorAll('.pres-date-input').forEach(function(input) {
-    input.addEventListener('change', function() {
-        fetch('/Tasks/SetDate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'id=' + this.dataset.id + '&presentationDate=' + encodeURIComponent(this.value)
-        });
-    });
-});
-
-// ── Other: add attribute ──────────────────────────────────────────────────
-(function () {
-    var addBtn = document.getElementById('addAttrBtn');
-    if (!addBtn) return;
-    var nameInput = document.getElementById('newAttrName');
-
-    addBtn.addEventListener('click', function () {
-        var name = nameInput.value.trim();
-        if (!name) return;
-        fetch('/ActivityAttributes/Create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'activityId=@Model.Id&name=' + encodeURIComponent(name)
-        }).then(function (r) { return r.json(); })
-          .then(function (d) { if (d.success) location.reload(); else alert(d.message); });
-    });
-
-    nameInput.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); addBtn.click(); }
-    });
-})();
-
-// ── Other: pick value (dropdown cell) ─────────────────────────────────────
-document.querySelectorAll('.other-value-pick').forEach(function (link) {
-    link.addEventListener('click', function (e) {
-        e.preventDefault();
-        var studentId  = this.dataset.studentId;
-        var attrId     = this.dataset.attrId;
-        var optionId   = this.dataset.optionId || '';
-        var optionName = this.dataset.optionName || '—';
-        var optionColor = this.dataset.optionColor || '';
-
-        fetch('/ActivityAttributes/SetValue', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'studentId=' + studentId + '&attributeId=' + attrId
-                + (optionId ? '&optionId=' + optionId : '')
-        }).then(function (r) { return r.json(); })
-          .then(function (d) {
-              if (!d.success) return;
-              // Update the dropdown button without full reload
-              var cell = document.querySelector('tr[data-student-id="' + studentId + '"] td[data-attr-id="' + attrId + '"]');
-              if (!cell) return;
-              var btn = cell.querySelector('.dropdown-toggle');
-              if (!btn) return;
-              btn.textContent = optionName;
-              btn.className = 'btn btn-sm dropdown-toggle '
-                  + (optionId ? 'btn-' + optionColor : 'btn-outline-secondary');
-          });
-    });
-});
-
-// ── Other: manage states modal ────────────────────────────────────────────
-(function () {
-    var modal = document.getElementById('manageStatesModal');
-    if (!modal) return;
-    var bsModal    = new bootstrap.Modal(modal);
-    var currentAttrId = null;
-
-    var modalAttrName  = document.getElementById('modalAttrName');
-    var modalSaveBtn   = document.getElementById('modalSaveBtn');
-    var modalDeleteBtn = document.getElementById('modalDeleteAttrBtn');
-    var statesList        = document.getElementById('statesList');
-    var newStateName      = document.getElementById('newStateName');
-    var newStateColor     = document.getElementById('newStateColor');
-    var addStateBtn       = document.getElementById('addStateBtn');
-
-    function colorLabel(c) {
-        var map = { primary:'Modrá', success:'Zelená', danger:'Červená', warning:'Žltá', info:'Tyrkysová', secondary:'Šedá', dark:'Tmavá' };
-        return map[c] || c;
-    }
-
-    function renderStates(options) {
-        if (!options.length) {
-            statesList.innerHTML = '<p class="text-muted small">Žiadne stavy.</p>';
-            return;
-        }
-        statesList.innerHTML = options.map(function (o) {
-            return '<div class="d-flex align-items-center gap-2 mb-1" id="state-row-' + o.id + '">'
-                + '<span class="badge bg-' + o.color + ' flex-shrink-0">' + escHtml(o.name) + '</span>'
-                + '<input type="text" class="form-control form-control-sm state-name-input" style="max-width:130px" value="' + escHtml(o.name) + '" data-id="' + o.id + '" maxlength="200" />'
-                + '<select class="form-select form-select-sm state-color-select" style="max-width:110px" data-id="' + o.id + '">'
-                + colorOptions(o.color)
-                + '</select>'
-                + '<button type="button" class="btn btn-sm btn-outline-danger state-delete-btn" data-id="' + o.id + '"><i class="bi bi-trash"></i></button>'
-                + '</div>';
-        }).join('');
-
-        statesList.querySelectorAll('.state-color-select').forEach(function (sel) {
-            sel.addEventListener('change', function () {
-                var row   = document.getElementById('state-row-' + this.dataset.id);
-                var badge = row.querySelector('.badge');
-                badge.className = 'badge bg-' + this.value + ' flex-shrink-0';
-            });
-        });
-
-        statesList.querySelectorAll('.state-name-input').forEach(function (input) {
-            input.addEventListener('input', function () {
-                var row   = document.getElementById('state-row-' + this.dataset.id);
-                var badge = row.querySelector('.badge');
-                badge.textContent = this.value || '​';
-            });
-        });
-
-        statesList.querySelectorAll('.state-delete-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var stateId = this.dataset.id;
-                var cModalEl  = document.getElementById('confirmModal');
-                var cModal    = bootstrap.Modal.getOrCreateInstance(cModalEl);
-                document.getElementById('confirmModalTitle').textContent = 'Vymazať stav';
-                document.getElementById('confirmModalBody').textContent  = 'Vymazať tento stav? Túto akciu nemožno vrátiť.';
-                var cActionBtn = document.getElementById('confirmModalAction');
-                var cNewBtn = cActionBtn.cloneNode(true);
-                cActionBtn.parentNode.replaceChild(cNewBtn, cActionBtn);
-                cNewBtn.addEventListener('click', function () {
-                    cModal.hide();
-                    fetch('/ActivityAttributes/DeleteOption', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'id=' + stateId
-                    }).then(function () { location.reload(); });
-                });
-                cModal.show();
-            });
-        });
-    }
-
-    function colorOptions(selected) {
-        var colors = ['secondary','primary','success','danger','warning','info','dark'];
-        return colors.map(function (c) {
-            return '<option value="' + c + '"' + (c === selected ? ' selected' : '') + '>' + colorLabel(c) + '</option>';
-        }).join('');
-    }
-
-    function escHtml(s) {
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    // Open modal from gear button
-    document.querySelectorAll('.btn-manage-attr').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            currentAttrId = this.dataset.attrId;
-            modalAttrName.value = this.dataset.attrName;
-            newStateName.value = '';
-            newStateColor.value = 'secondary';
-
-            // Collect unique options from the page — each option appears once per student row,
-            // so deduplicate by optionId using a Map
-            var picks = document.querySelectorAll('.other-value-pick[data-attr-id="' + currentAttrId + '"][data-option-id]:not([data-option-id=""])');
-            var seen = new Map();
-            Array.from(picks).forEach(function (a) {
-                if (!seen.has(a.dataset.optionId)) {
-                    seen.set(a.dataset.optionId, { id: a.dataset.optionId, name: a.dataset.optionName, color: a.dataset.optionColor });
-                }
-            });
-            renderStates(Array.from(seen.values()));
-            bsModal.show();
-        });
-    });
-
-    // Save all (rename attribute + edit all states)
-    modalSaveBtn.addEventListener('click', function () {
-        if (!currentAttrId) return;
-        var promises = [];
-
-        var newName = modalAttrName.value.trim();
-        if (newName) {
-            promises.push(fetch('/ActivityAttributes/Rename', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'id=' + currentAttrId + '&name=' + encodeURIComponent(newName)
-            }));
-        }
-
-        statesList.querySelectorAll('[id^="state-row-"]').forEach(function (row) {
-            var id    = row.id.replace('state-row-', '');
-            var name  = row.querySelector('.state-name-input').value.trim();
-            var color = row.querySelector('.state-color-select').value;
-            if (!name) return;
-            promises.push(fetch('/ActivityAttributes/EditOption', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'id=' + id + '&name=' + encodeURIComponent(name) + '&color=' + color
-            }));
-        });
-
-        Promise.all(promises).then(function () { location.reload(); });
-    });
-
-    // Delete attribute
-    modalDeleteBtn.addEventListener('click', function () {
-        if (!currentAttrId) return;
-        var cModalEl  = document.getElementById('confirmModal');
-        var cModal    = bootstrap.Modal.getOrCreateInstance(cModalEl);
-        document.getElementById('confirmModalTitle').textContent = 'Vymazať atribút';
-        document.getElementById('confirmModalBody').textContent  = 'Vymazať tento atribút a všetky hodnoty študentov? Túto akciu nemožno vrátiť.';
-        var cActionBtn = document.getElementById('confirmModalAction');
-        var cNewBtn = cActionBtn.cloneNode(true);
-        cActionBtn.parentNode.replaceChild(cNewBtn, cActionBtn);
-        cNewBtn.addEventListener('click', function () {
-            cModal.hide();
-            fetch('/ActivityAttributes/Delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'id=' + currentAttrId
-            }).then(function () { location.reload(); });
-        });
-        cModal.show();
-    });
-
-    // Add state
-    addStateBtn.addEventListener('click', function () {
-        var name  = newStateName.value.trim();
-        var color = newStateColor.value;
-        if (!name || !currentAttrId) return;
-        fetch('/ActivityAttributes/AddOption', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'attributeId=' + currentAttrId + '&name=' + encodeURIComponent(name) + '&color=' + color
-        }).then(function () { location.reload(); });
-    });
-
-    newStateName.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); addStateBtn.click(); }
-    });
-})();
-
-// ── Presentation student checkboxes auto-save ──────────────────────────────
-document.querySelectorAll('.pres-student-dropdown').forEach(function(dropdown) {
-    var taskId = dropdown.dataset.taskId;
-    var token = dropdown.querySelector('input[name="__RequestVerificationToken"]').value;
-    dropdown.querySelectorAll('.pres-student-cb').forEach(function(cb) {
-        cb.addEventListener('change', function() {
-            var checked = Array.from(dropdown.querySelectorAll('.pres-student-cb:checked'));
-            var body = '__RequestVerificationToken=' + encodeURIComponent(token) + '&taskId=' + taskId;
-            checked.forEach(function(c) { body += '&studentIds=' + c.value; });
-
-            fetch('/Tasks/SetPresentationStudents', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: body
-            }).then(function(r) {
-                if (r.ok) {
-                    var badgeArea = document.getElementById('pres-badges-' + taskId);
-                    if (checked.length === 0) {
-                        badgeArea.innerHTML = '<span class="text-muted small">Žiadni</span>';
-                    } else {
-                        badgeArea.innerHTML = checked.map(function(c) {
-                            return '<span class="badge bg-primary">' + c.dataset.name + '</span>';
-                        }).join('');
-                    }
-                } else { alert('Nepodarilo sa uložiť priradenie študentov.'); }
-            });
-        });
-    });
-});
-
-// ── Per-row presentation draw ─────────────────────────────────────────────
-document.querySelectorAll('.btn-draw-pres').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        window.location.href = '/Draw?presentationIds=' + this.dataset.id;
-    });
-});
-
-// ── Presentation selection & draw navigation ──────────────────────────────
-(function () {
-    var presSelectAll = document.getElementById('presSelectAll');
-    if (!presSelectAll) return;
-    var countLabel   = document.getElementById('presSelectionCount');
-    var presDrawBtn  = document.getElementById('presDrawBtn');
-
-    function getPresChecked() {
-        return Array.from(document.querySelectorAll('.pres-row-check:checked'));
-    }
-
-    function updatePresToolbar() {
-        var checked = getPresChecked();
-        var count = checked.length;
-        countLabel.textContent = count > 0 ? count + ' vybraných' : '';
-        presDrawBtn.disabled = count === 0;
-        var total = document.querySelectorAll('.pres-row-check').length;
-        presSelectAll.checked = count === total && total > 0;
-        presSelectAll.indeterminate = count > 0 && count < total;
-    }
-
-    presSelectAll.addEventListener('change', function () {
-        document.querySelectorAll('.pres-row-check').forEach(function (cb) {
-            cb.checked = presSelectAll.checked;
-        });
-        updatePresToolbar();
-    });
-
-    document.querySelectorAll('.pres-row-check').forEach(function (cb) {
-        cb.addEventListener('change', updatePresToolbar);
-    });
-
-    presDrawBtn.addEventListener('click', function () {
-        var checked = getPresChecked();
-        if (checked.length === 0) return;
-        var ids = checked.map(function (cb) { return cb.value; }).join(',');
-        window.location.href = '/Draw?presentationIds=' + ids;
-    });
-})();
-</script>
-}
+@* Scripts loaded from site.js *@

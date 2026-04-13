@@ -99,14 +99,4 @@
     <a asp-action="Import" asp-route-groupId="@Model.GroupId" class="btn btn-secondary">Zrušiť</a>
 </form>
 
-<script>
-    document.querySelectorAll('.col-toggle').forEach(function (cb) {
-        cb.addEventListener('change', function () {
-            var col = this.dataset.col;
-            var visible = this.checked;
-            document.querySelectorAll('.' + col).forEach(function (el) {
-                el.style.display = visible ? '' : 'none';
-            });
-        });
-    });
-</script>
+@* Scripts loaded from site.js *@

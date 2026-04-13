@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using StudentApp.Web.Models.Entities;
 using StudentApp.Web.Models.ViewModels;
 using StudentApp.Web.Services;
 
@@ -260,7 +261,7 @@ public class ActivitiesController : Controller
     {
         try
         {
-            var drawn = await _assignmentService.DrawAddForPresentationAsync(taskId, count);
+            var drawn = await _assignmentService.DrawAddForPresentationAsync(taskId, count, PresentationRole.Presentee);
             TempData["DrawnStudents"] = JsonSerializer.Serialize(
                 drawn.Select(s => $"{s.FirstName} {s.LastName}").ToList());
             return RedirectToAction(nameof(DrawResultForPresentation), new { taskId });

@@ -73,6 +73,24 @@ public class DrawService : IDrawService
             .Include(d => d.TaskItem)
             .ToListAsync();
 
+        // Pre-load PresentationStudent roles for all task items in these records
+        var taskItemIds = records
+            .Where(d => d.TaskItemId.HasValue)
+            .Select(d => d.TaskItemId!.Value)
+            .Distinct()
+            .ToList();
+
+        var presRoles = taskItemIds.Count > 0
+            ? await _db.PresentationStudents
+                .Where(ps => taskItemIds.Contains(ps.TaskItemId))
+                .Select(ps => new { ps.TaskItemId, ps.StudentId, ps.Role })
+                .ToListAsync()
+            : [];
+
+        var roleMap = presRoles.ToDictionary(
+            ps => (ps.TaskItemId, ps.StudentId),
+            ps => (byte)ps.Role);
+
         // Group by (ActivityId, TaskItemId, DrawnAt tick) so all students drawn in one
         // batch share the same timestamp; bag draws (both null) are individual rows.
         var batches = records
@@ -83,7 +101,9 @@ public class DrawService : IDrawService
                 g.First().TaskItem?.Title,
                 g.OrderBy(d => d.Student.LastName)
                  .ThenBy(d => d.Student.FirstName)
-                 .Select(d => d.Student.FirstName + " " + d.Student.LastName)
+                 .Select(d => new DrawStudentDto(
+                     d.Student.FirstName + " " + d.Student.LastName,
+                     d.TaskItemId.HasValue && roleMap.TryGetValue((d.TaskItemId.Value, d.StudentId), out var r) ? r : null))
                  .ToList(),
                 g.Key.Ticks == 0 ? DateTime.MinValue : new DateTime(g.Key.Ticks, DateTimeKind.Utc)
             ))

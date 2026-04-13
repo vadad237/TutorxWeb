@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var initialIds      = JSON.parse(drawData.dataset.initialIds || '[]');
     var presentations   = JSON.parse(drawData.dataset.presentations || '[]');
     var initialPresIds  = JSON.parse(drawData.dataset.initialPresIds || '[]');
+    var initialPresRole = drawData.dataset.initialPresRole || '0';
 
     var cardCounter   = 0;
     var isDrawingAll  = false;
@@ -45,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Card creation ─────────────────────────────────────────────────────────
     // type: 'activity' | 'presentation'
-    function createCard(type, preselectedId) {
+    function createCard(type, preselectedId, preselectedRole) {
         var id = ++cardCounter;
         var isPresentation = type === 'presentation';
         var items = isPresentation ? presentations : activities;
@@ -94,6 +95,18 @@ document.addEventListener('DOMContentLoaded', function () {
           +       '<label class="form-label small fw-semibold mb-1">' + labelText + '</label>'
           +       '<select class="form-select form-select-sm card-item-select">' + opts + '</select>'
           +     '</div>'
+
+          // Role selector (presentations only)
+          + (isPresentation
+          ?   '<div>'
+          +     '<label class="form-label small fw-semibold mb-1">Rola</label>'
+          +     '<select class="form-select form-select-sm card-role-select">'
+          +       '<option value="0"' + ((!preselectedRole || preselectedRole === '0') ? ' selected' : '') + '>Prezentujúci</option>'
+          +       '<option value="1"' + (preselectedRole === '1' ? ' selected' : '') + '>Náhradník</option>'
+          +       '<option value="both"' + (preselectedRole === 'both' ? ' selected' : '') + '>Obaja (prezentujúci + náhradník)</option>'
+          +     '</select>'
+          +   '</div>'
+          : '')
 
           // Eligible students list
           +     '<div class="card-eligible-wrap">'
@@ -160,6 +173,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var eligibleList     = wrapper.querySelector('.card-eligible-list');
         var eligibleBadge    = wrapper.querySelector('.card-eligible-badge');
         var includeAssignedCb = wrapper.querySelector('.card-include-assigned');
+        var roleSelect        = wrapper.querySelector('.card-role-select'); // null for activity cards
         var isCardDrawing    = false;
         var cardType         = type;
 
@@ -236,8 +250,14 @@ document.addEventListener('DOMContentLoaded', function () {
             wrapper._updateCardBtn();
 
             var include = includeAssignedCb.checked ? '&includeAlreadyAssigned=true' : '';
+            var roleParam = '';
+            if (cardType === 'presentation' && roleSelect) {
+                var rv = roleSelect.value;
+                // For 'both', load eligible for presentee (role=0) — the union covers all assigned students
+                roleParam = '&role=' + (rv === 'both' ? '0' : rv);
+            }
             var url = cardType === 'presentation'
-                ? '/Tasks/GetEligiblePresentationStudents?taskId=' + itemId + include
+                ? '/Tasks/GetEligiblePresentationStudents?taskId=' + itemId + include + roleParam
                 : '/Activities/GetEligibleStudents?activityId=' + itemId + include;
             return fetch(url)
                 .then(function (r) { return r.json(); })
@@ -281,6 +301,13 @@ document.addEventListener('DOMContentLoaded', function () {
         includeAssignedCb.addEventListener('change', function () {
             if (actSel.value) loadEligible(parseInt(actSel.value, 10));
         });
+
+        // ── Role select change (presentations only) ───────────────────────────
+        if (roleSelect) {
+            roleSelect.addEventListener('change', function () {
+                if (actSel.value) loadEligible(parseInt(actSel.value, 10));
+            });
+        }
 
         // ── Item select change ─────────────────────────────────────────────────
         actSel.addEventListener('change', function () {
@@ -393,37 +420,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Full draw sequence for one card ───────────────────────────────────────
     async function runCardDraw(cardEl) {
-        var actSel           = cardEl.querySelector('.card-item-select');
-        var countInput       = cardEl.querySelector('.card-count-input');
-        var slotDisplay      = cardEl.querySelector('.card-slot-display');
-        var slotName         = cardEl.querySelector('.card-slot-name');
-        var resultsList      = cardEl.querySelector('.card-results-list');
-        var completeMsg      = cardEl.querySelector('.card-complete-msg');
+        var actSel            = cardEl.querySelector('.card-item-select');
+        var countInput        = cardEl.querySelector('.card-count-input');
+        var slotDisplay       = cardEl.querySelector('.card-slot-display');
+        var slotName          = cardEl.querySelector('.card-slot-name');
+        var resultsList       = cardEl.querySelector('.card-results-list');
+        var completeMsg       = cardEl.querySelector('.card-complete-msg');
         var includeAssignedCb = cardEl.querySelector('.card-include-assigned');
-        var cType            = cardEl.dataset.cardType || 'activity';
+        var roleSel           = cardEl.querySelector('.card-role-select');
+        var cType             = cardEl.dataset.cardType || 'activity';
 
         var selectedId = parseInt(actSel.value, 10);
         if (!selectedId) return;
         var count = Math.max(1, parseInt(countInput.value, 10) || 1);
         var includeAssigned = includeAssignedCb && includeAssignedCb.checked;
+        var roleValue = (roleSel && cType === 'presentation') ? roleSel.value : null;
 
         // Collect the IDs of students still visible in the eligible list
         var eligibleListEl = cardEl.querySelector('.card-eligible-list');
         var allowedIds = Array.from(eligibleListEl.querySelectorAll('.eligible-tag[data-student-id]'))
             .map(function (tag) { return tag.dataset.studentId; });
 
-        resultsList.innerHTML    = '';
+        resultsList.innerHTML     = '';
         completeMsg.style.opacity = '0';
         slotDisplay.classList.remove('locked', 'spinning');
 
-        try {
+        // Helper: draw for a specific role and return names, or null on error
+        async function drawForRole(role) {
             var drawUrl, drawBody;
             if (cType === 'presentation') {
-                drawUrl = '/Draw/DrawForPresentation';
-                drawBody = 'taskId=' + selectedId + '&count=' + count
+                drawUrl  = '/Draw/DrawForPresentation';
+                drawBody = 'taskId=' + selectedId + '&count=' + count + '&role=' + role
                     + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
             } else {
-                drawUrl = '/Draw/DrawForActivity';
+                drawUrl  = '/Draw/DrawForActivity';
                 drawBody = 'activityId=' + selectedId + '&count=' + count
                     + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
             }
@@ -433,24 +463,98 @@ document.addEventListener('DOMContentLoaded', function () {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: drawBody
             });
-            var data = await resp.json();
+            return resp.json();
+        }
 
-            if (!data.success || !data.drawnNames || data.drawnNames.length === 0) {
-                slotName.style.fontSize = '0.9rem';
-                slotName.style.color    = '#dc3545';
-                slotName.textContent    = data.message || 'Žiadni oprávnení študenti.';
-                return;
-            }
+        try {
+            if (cType === 'presentation' && roleValue === 'both') {
+                // ── Draw Prezentujúci (role 0) then Náhradník (role 1) ────────
+                var dataP = await drawForRole(0);
+                if (!dataP.success || !dataP.drawnNames || dataP.drawnNames.length === 0) {
+                    slotName.style.fontSize = '0.9rem';
+                    slotName.style.color    = '#dc3545';
+                    slotName.textContent    = dataP.message || 'Žiadni oprávnení študenti (prezentujúci).';
+                    return;
+                }
 
-            var names = data.drawnNames;
-            for (var i = 0; i < names.length; i++) {
-                await revealOneOnCard(cardEl, names[i], i, names.length);
+                // Show a section label for presentee results
+                var labelP = document.createElement('div');
+                labelP.className = 'w-100 text-start';
+                labelP.innerHTML = '<small class="fw-semibold text-primary">Prezentujúci</small>';
+                resultsList.appendChild(labelP);
+
+                for (var i = 0; i < dataP.drawnNames.length; i++) {
+                    await revealOneOnCard(cardEl, dataP.drawnNames[i], i, dataP.drawnNames.length);
+                }
+
+                // Reset slot drum for the substitution draw
+                slotDisplay.classList.remove('locked', 'spinning');
+
+                // Fetch fresh substitution-eligible students (role=1).
+                // The server already excludes students assigned to this presentation
+                // in any role, so the just-drawn presentees are automatically excluded.
+                var subInclude = includeAssigned ? '&includeAlreadyAssigned=true' : '';
+                var subEligibleUrl = '/Tasks/GetEligiblePresentationStudents?taskId=' + selectedId
+                    + '&role=1' + subInclude;
+                var reloadedSubs = await fetch(subEligibleUrl).then(function (r) { return r.json(); });
+                var subAllowedIds = reloadedSubs.map(function (s) { return String(s.id); });
+
+                if (subAllowedIds.length === 0) {
+                    var labelSNone = document.createElement('div');
+                    labelSNone.className = 'w-100 text-start mt-1';
+                    labelSNone.innerHTML = '<small class="text-muted">Náhradník: žiadni oprávnení študenti.</small>';
+                    resultsList.appendChild(labelSNone);
+                    completeMsg.style.opacity = '1';
+                    return;
+                }
+
+                var drawBodyS = 'taskId=' + selectedId + '&count=' + count + '&role=1'
+                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
+                subAllowedIds.forEach(function (sid) { drawBodyS += '&allowedStudentIds=' + encodeURIComponent(sid); });
+                var respS = await fetch('/Draw/DrawForPresentation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: drawBodyS
+                });
+                var dataS = await respS.json();
+
+                if (dataS.success && dataS.drawnNames && dataS.drawnNames.length > 0) {
+                    var labelS = document.createElement('div');
+                    labelS.className = 'w-100 text-start mt-1';
+                    labelS.innerHTML = '<small class="fw-semibold text-warning">Náhradník</small>';
+                    resultsList.appendChild(labelS);
+
+                    for (var j = 0; j < dataS.drawnNames.length; j++) {
+                        await revealOneOnCard(cardEl, dataS.drawnNames[j], j, dataS.drawnNames.length);
+                    }
+                } else {
+                    var labelSFail = document.createElement('div');
+                    labelSFail.className = 'w-100 text-start mt-1';
+                    labelSFail.innerHTML = '<small class="text-muted">Náhradník: žiadni oprávnení študenti.</small>';
+                    resultsList.appendChild(labelSFail);
+                }
+
+            } else {
+                // ── Single-role draw ──────────────────────────────────────────
+                var role = (cType === 'presentation' && roleValue !== null) ? parseInt(roleValue, 10) : 0;
+                var data = await drawForRole(role);
+
+                if (!data.success || !data.drawnNames || data.drawnNames.length === 0) {
+                    slotName.style.fontSize = '0.9rem';
+                    slotName.style.color    = '#dc3545';
+                    slotName.textContent    = data.message || 'Žiadni oprávnení študenti.';
+                    return;
+                }
+
+                for (var k = 0; k < data.drawnNames.length; k++) {
+                    await revealOneOnCard(cardEl, data.drawnNames[k], k, data.drawnNames.length);
+                }
             }
 
             completeMsg.style.opacity = '1';
         } catch (e) {
-            slotName.style.color    = '#dc3545';
-            slotName.textContent    = 'Chyba – skúste znova.';
+            slotName.style.color = '#dc3545';
+            slotName.textContent = 'Chyba – skúste znova.';
         }
     }
 
@@ -505,7 +609,7 @@ document.addEventListener('DOMContentLoaded', function () {
         hasInitial = true;
     }
     if (initialPresIds && initialPresIds.length > 0) {
-        initialPresIds.forEach(function (presId) { createCard('presentation', presId); });
+        initialPresIds.forEach(function (presId) { createCard('presentation', presId, initialPresRole); });
         hasInitial = true;
     }
     if (!hasInitial) {

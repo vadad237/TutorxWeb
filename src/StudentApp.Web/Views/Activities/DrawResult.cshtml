@@ -7,24 +7,6 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/slot-machine.css" asp-append-version="true" />
-    <style>
-        .draw-hero {
-            min-height: 60vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 2rem;
-        }
-        #progress-label {
-            font-size: .95rem;
-            letter-spacing: .04em;
-            text-transform: uppercase;
-            min-height: 1.4rem;
-        }
-        #complete-section { opacity: 0; transition: opacity .6s ease; }
-        #complete-section.visible { opacity: 1; }
-    </style>
 }
 
 <div class="draw-hero">
@@ -69,102 +51,8 @@
         </a>
     </div>
 
+    <div id="draw-result-data" data-drawn='@Html.Raw(drawnJson)' data-all='@Html.Raw(allJson)' style="display:none"></div>
 </div>
 
-@section Scripts {
-<script>
-(function () {
-    const drawnNames = @Html.Raw(drawnJson);
-    const allNames   = @Html.Raw(allJson);
+@* Scripts loaded from site.js *@
 
-    const slotDisplay  = document.getElementById('slot-display');
-    const slotName     = document.getElementById('slot-name');
-    const progressLabel= document.getElementById('progress-label');
-    const resultsList  = document.getElementById('results-list');
-    const completeSection = document.getElementById('complete-section');
-
-    // Ensure pool has enough variety for a good spin
-    function buildPool() {
-        let pool = [...allNames];
-        while (pool.length < 20) pool = [...pool, ...allNames];
-        return pool.sort(() => Math.random() - 0.5);
-    }
-
-    function addResult(name) {
-        const card = document.createElement('div');
-        card.className = 'student-card';
-        card.textContent = name;
-        resultsList.appendChild(card);
-        // Trigger transition on next frame
-        requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('visible')));
-    }
-
-    function showComplete() {
-        progressLabel.textContent = '';
-        completeSection.classList.add('visible');
-    }
-
-    function revealStudent(index) {
-        if (index >= drawnNames.length) {
-            showComplete();
-            return;
-        }
-
-        const target = drawnNames[index];
-        progressLabel.textContent =
-            drawnNames.length === 1
-                ? 'Žrebuje sa študent…'
-                : `Žrebuje sa študent ${index + 1} z ${drawnNames.length}…`;
-
-        slotDisplay.classList.remove('locked');
-        slotDisplay.classList.add('spinning');
-        slotName.innerHTML = '';
-
-        const pool = buildPool();
-        let poolIndex = 0;
-
-        // Spin schedule: [duration ms, interval ms]
-        const schedule = [
-            [800,  55],
-            [600,  95],
-            [400, 160],
-            [300, 260],
-            [200, 370],
-        ];
-
-        let scheduleIdx = 0;
-        let phaseEnd = Date.now() + schedule[0][0];
-
-        function tick() {
-            slotName.textContent = pool[poolIndex % pool.length];
-            poolIndex++;
-
-            const now = Date.now();
-            if (now >= phaseEnd) {
-                scheduleIdx++;
-                if (scheduleIdx >= schedule.length) {
-                    // Land on target
-                    slotDisplay.classList.remove('spinning');
-                    slotDisplay.classList.add('locked');
-                    slotName.textContent = target;
-                    setTimeout(() => {
-                        addResult(target);
-                        setTimeout(() => revealStudent(index + 1), drawnNames.length > 1 ? 900 : 600);
-                    }, 1000);
-                    return;
-                }
-                phaseEnd = now + schedule[scheduleIdx][0];
-            }
-
-            setTimeout(tick, schedule[scheduleIdx][1]);
-        }
-
-        // Short pause before each student to let the user breathe
-        setTimeout(tick, index === 0 ? 600 : 400);
-    }
-
-    // Kick off
-    revealStudent(0);
-})();
-</script>
-}

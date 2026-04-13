@@ -63,3 +63,189 @@ td .btn-group-sm > form > .btn {
 .draw-pulse {
     animation: drawPulse 0.5s ease-in-out;
 }
+
+/* ── _Layout.cshtml ─────────────────────────────────────────────────────── */
+.active-nav {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    border-left: 3px solid #0d6efd;
+}
+#sidebar .nav-link:not(.active-nav):hover {
+    background-color: rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+}
+.btn-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Account/Login.cshtml ───────────────────────────────────────────────── */
+.login-page {
+    background-color: #f5f5f5;
+    display: flex;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* ── Shared/_DrawLayout.cshtml ──────────────────────────────────────────── */
+.draw-layout-body {
+    background: #0D1117;
+    color: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+#bag-status {
+    font-size: 1.1rem;
+    color: #90CAF9;
+}
+#draw-btn {
+    font-size: 1.8rem;
+    padding: 20px 48px;
+    min-width: 220px;
+}
+
+/* ── Attendance/History.cshtml ──────────────────────────────────────────── */
+.att-wrap {
+    max-height: 75vh;
+    overflow: auto;
+}
+.att-wrap table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.att-wrap thead tr th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+.att-wrap thead tr th:first-child,
+.att-wrap tbody tr td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+}
+.att-wrap thead tr th:first-child {
+    z-index: 4;
+    background: #212529;
+}
+.att-wrap tbody tr td:first-child {
+    border-right: 1px solid #dee2e6;
+}
+
+/* ── Evaluations/Index.cshtml ───────────────────────────────────────────── */
+.eval-wrap {
+    max-height: 75vh;
+    overflow: auto;
+}
+.eval-wrap table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.eval-wrap thead tr th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+.eval-wrap thead tr th:first-child,
+.eval-wrap tbody tr td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+}
+.eval-wrap thead tr th:first-child {
+    z-index: 4;
+    background: #212529;
+}
+.eval-wrap tbody tr td:first-child {
+    border-right: 1px solid #dee2e6;
+}
+
+/* ── Activities/DrawResult.cshtml ───────────────────────────────────────── */
+.draw-hero {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+}
+#progress-label {
+    font-size: .95rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    min-height: 1.4rem;
+}
+#complete-section { opacity: 0; transition: opacity .6s ease; }
+#complete-section.visible { opacity: 1; }
+
+/* ── Draw/Index.cshtml ──────────────────────────────────────────────────── */
+.slot-outer-compact {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+.slot-outer-compact .slot-display {
+    height: 68px;
+}
+.slot-outer-compact .slot-name {
+    font-size: 1.35rem;
+}
+.slot-outer-compact::before,
+.slot-outer-compact::after {
+    height: 16px;
+}
+.draw-card-inner { transition: box-shadow .2s; }
+.card-results-list .student-card {
+    padding: 6px 16px;
+    font-size: 0.9rem;
+}
+#add-card-placeholder {
+    border: 2px dashed #dee2e6;
+    border-radius: .5rem;
+    background: transparent;
+    transition: border-color .15s, background .15s;
+    cursor: pointer;
+    min-height: 80px;
+}
+#add-card-placeholder:hover {
+    border-color: #0d6efd;
+    background: rgba(13,110,253,.04);
+}
+
+/* ── CustomExport/Index.cshtml ──────────────────────────────────────────── */
+.export-card { cursor: pointer; display: block; }
+.section-card {
+    transition: border-color .15s, box-shadow .15s;
+    border-color: #dee2e6 !important;
+    cursor: pointer;
+}
+.section-card.active {
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 3px rgba(13,110,253,.12);
+}
+.section-card.active .check-icon { color: #0d6efd !important; }
+.section-card.active .check-icon::before { content: "\F26B"; } /* check-circle-fill */
+.section-card:not(.active) .check-icon::before { content: "\F287"; } /* circle */
+.cursor-pointer { cursor: pointer; }
+.format-radio .form-check-label { cursor: pointer; }
+.student-field-label { cursor: pointer; user-select: none; }
+.student-field-cb { display: none; }
+.student-field-badge {
+    transition: opacity .15s, background .15s;
+    border: 2px solid transparent;
+}
+.student-field-cb:checked + input + .student-field-badge,
+.student-field-cb:checked ~ .student-field-badge {
+    border-color: #1e3a5f;
+}
+.student-field-label.disabled .student-field-badge {
+    opacity: .45;
+    pointer-events: none;
+}

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using StudentApp.Web.Models.Entities;
 using StudentApp.Web.Models.ViewModels;
 using StudentApp.Web.Services;
 
@@ -29,7 +30,7 @@ public class DrawController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(int? groupId, string? activityIds = null, string? presentationIds = null)
+    public async Task<IActionResult> Index(int? groupId, string? activityIds = null, string? presentationIds = null, string? presRole = null)
     {
         var gid = groupId ?? HttpContext.Session.GetActiveGroup();
         if (!gid.HasValue)
@@ -82,6 +83,8 @@ public class DrawController : Controller
                 .Where(id => id > 0)
                 .ToList();
         ViewBag.InitialPresentationIds = initialPresIds;
+        // presRole: "0" = Presentee, "1" = Substitution, "both" = both, null/other = default (Presentee)
+        ViewBag.InitialPresRole = presRole ?? "0";
 
         return View(vm);
     }
@@ -102,11 +105,11 @@ public class DrawController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> DrawForPresentation(int taskId, int count, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
+    public async Task<IActionResult> DrawForPresentation(int taskId, int count, int role = 0, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
     {
         try
         {
-            var drawn = await _assignmentService.DrawAddForPresentationAsync(taskId, count, includeAlreadyAssigned, allowedStudentIds);
+            var drawn = await _assignmentService.DrawAddForPresentationAsync(taskId, count, (PresentationRole)role, includeAlreadyAssigned, allowedStudentIds);
             var names = drawn.Select(s => $"{s.FirstName} {s.LastName}").ToList();
             return Json(new { success = true, drawnNames = names });
         }

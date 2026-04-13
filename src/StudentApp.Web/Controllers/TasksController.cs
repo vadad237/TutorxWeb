@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using StudentApp.Web.Models.Entities;
 using StudentApp.Web.Services;
 
 namespace StudentApp.Web.Controllers;
@@ -49,6 +50,13 @@ public class TasksController : Controller
     }
 
     [HttpPost]
+    public async Task<IActionResult> SetPresentationStudentsByRole(int taskId, int[]? studentIds, int role = 0)
+    {
+        await _taskService.SetPresentationStudentsByRoleAsync(taskId, studentIds, (PresentationRole)role);
+        return Ok();
+    }
+
+    [HttpPost]
     public async Task<IActionResult> Delete(int id)
     {
         var (found, activityId) = await _taskService.DeleteTaskAsync(id);
@@ -59,9 +67,10 @@ public class TasksController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetEligiblePresentationStudents(int taskId, bool includeAlreadyAssigned = false)
+    public async Task<IActionResult> GetEligiblePresentationStudents(int taskId, bool includeAlreadyAssigned = false, int? role = null)
     {
-        var eligible = await _taskService.GetEligiblePresentationStudentsAsync(taskId, includeAlreadyAssigned);
+        PresentationRole? parsedRole = role.HasValue ? (PresentationRole)role.Value : null;
+        var eligible = await _taskService.GetEligiblePresentationStudentsAsync(taskId, includeAlreadyAssigned, parsedRole);
         if (eligible == null) return NotFound();
 
         return Json(eligible);

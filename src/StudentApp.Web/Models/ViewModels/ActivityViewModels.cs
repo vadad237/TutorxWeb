@@ -71,7 +71,9 @@ public record StudentAttributeValueVm(int StudentId, int AttributeId, int? Optio
 public record SimpleTaskVm(int TaskId, string Title);
 
 public record PresentationStudentVm(int StudentId, string FullName);
-public record TaskWithAssignmentVm(int TaskId, string Title, DateTime? PresentationDate, List<PresentationStudentVm> PresentationStudents);
+public record TaskWithAssignmentVm(int TaskId, string Title, DateTime? PresentationDate,
+    List<PresentationStudentVm> PresenteeStudents,
+    List<PresentationStudentVm> SubstitutionStudents);
 
 public class TaskCreateVm
 {

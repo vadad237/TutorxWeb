@@ -212,7 +212,7 @@ public class AssignmentService : IAssignmentService
     }
 
     // Draw N random students for a presentation, ADDING to existing PresentationStudents
-    public async Task<List<Student>> DrawAddForPresentationAsync(int taskId, int count, bool includeAlreadyAssigned = false, List<int>? allowedStudentIds = null)
+    public async Task<List<Student>> DrawAddForPresentationAsync(int taskId, int count, PresentationRole role, bool includeAlreadyAssigned = false, List<int>? allowedStudentIds = null)
     {
         var task = await _db.TaskItems
             .Include(t => t.Activity).ThenInclude(a => a.Assignments).ThenInclude(a => a.Student)
@@ -220,19 +220,22 @@ public class AssignmentService : IAssignmentService
             .FirstOrDefaultAsync(t => t.Id == taskId && t.IsPresentation)
             ?? throw new InvalidOperationException("Presentation not found.");
 
-        // Already assigned to this presentation
-        var assignedToThis = task.PresentationStudents.Select(ps => ps.StudentId).ToHashSet();
+        // Exclude ALL students already assigned to this presentation in any role:
+        // - same role: can't draw twice
+        // - opposite role: can't be both prezentujúci and náhradník on the same presentation
+        var assignedToThisPres = task.PresentationStudents
+            .Select(ps => ps.StudentId).ToHashSet();
 
-        // Pool = students assigned to the parent activity, minus already on this presentation
+        // Pool = students assigned to the parent activity, minus anyone already on this presentation
         var pool = task.Activity.Assignments
             .Select(a => a.Student)
-            .Where(s => s.IsActive && !assignedToThis.Contains(s.Id));
+            .Where(s => s.IsActive && !assignedToThisPres.Contains(s.Id));
 
         if (!includeAlreadyAssigned)
         {
-            // Exclude students already assigned to any other presentation in this activity
+            // Exclude students already assigned to this same role in any other presentation in this activity
             var assignedToAnyPres = await _db.PresentationStudents
-                .Where(ps => ps.TaskItem.ActivityId == task.ActivityId)
+                .Where(ps => ps.TaskItem.ActivityId == task.ActivityId && ps.Role == role)
                 .Select(ps => ps.StudentId)
                 .Distinct()
                 .ToListAsync();
@@ -261,7 +264,8 @@ public class AssignmentService : IAssignmentService
             _db.PresentationStudents.Add(new PresentationStudent
             {
                 TaskItemId = taskId,
-                StudentId = student.Id
+                StudentId = student.Id,
+                Role = role
             });
 
             _db.DrawHistories.Add(new DrawHistory

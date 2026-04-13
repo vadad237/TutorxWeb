@@ -137,7 +137,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .HasOne(ps => ps.Student).WithMany(s => s.PresentationStudents)
             .HasForeignKey(ps => ps.StudentId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<PresentationStudent>()
-            .HasIndex(ps => new { ps.TaskItemId, ps.StudentId }).IsUnique();
+            .HasIndex(ps => new { ps.TaskItemId, ps.StudentId, ps.Role }).IsUnique();
 
         // ActivityAttribute → Activity (cascade delete)
         builder.Entity<ActivityAttribute>()

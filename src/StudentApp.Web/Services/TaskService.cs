@@ -61,24 +61,40 @@ public class TaskService : ITaskService
         }
     }
 
+    public async Task SetPresentationStudentsByRoleAsync(int taskId, int[]? studentIds, PresentationRole role)
+    {
+        var existing = _db.PresentationStudents.Where(ps => ps.TaskItemId == taskId && ps.Role == role);
+        _db.PresentationStudents.RemoveRange(existing);
+        await _db.SaveChangesAsync();
+
+        if (studentIds != null)
+        {
+            foreach (var sid in studentIds)
+                _db.PresentationStudents.Add(new PresentationStudent { TaskItemId = taskId, StudentId = sid, Role = role });
+            await _db.SaveChangesAsync();
+        }
+    }
+
     public async Task<(bool Found, int? ActivityId)> DeleteTaskAsync(int id)
     {
-        var task = await _db.TaskItems.FindAsync(id);
-        if (task == null) return (false, null);
+        var activityId = await _db.TaskItems
+            .Where(t => t.Id == id)
+            .Select(t => (int?)t.ActivityId)
+            .FirstOrDefaultAsync();
 
-        var activityId = task.ActivityId;
+        if (activityId == null) return (false, null);
 
         await _db.PresentationStudents.Where(ps => ps.TaskItemId == id).ExecuteDeleteAsync();
         await _db.Evaluations.Where(e => e.TaskItemId == id).ExecuteDeleteAsync();
         await _db.Assignments.Where(a => a.TaskItemId == id).ExecuteDeleteAsync();
-
-        _db.TaskItems.Remove(task);
-        await _db.SaveChangesAsync();
+        await _db.DrawHistories.Where(d => d.TaskItemId == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(d => d.TaskItemId, (int?)null));
+        await _db.TaskItems.Where(t => t.Id == id).ExecuteDeleteAsync();
 
         return (true, activityId);
     }
 
-    public async Task<List<EligibleStudentDto>?> GetEligiblePresentationStudentsAsync(int taskId, bool includeAlreadyAssigned)
+    public async Task<List<EligibleStudentDto>?> GetEligiblePresentationStudentsAsync(int taskId, bool includeAlreadyAssigned, PresentationRole? role = null)
     {
         var task = await _db.TaskItems
             .Include(t => t.Activity).ThenInclude(a => a.Assignments).ThenInclude(a => a.Student)
@@ -87,16 +103,25 @@ public class TaskService : ITaskService
 
         if (task == null) return null;
 
-        var assignedToThis = task.PresentationStudents.Select(ps => ps.StudentId).ToHashSet();
+        // Exclude students already on this presentation in any role that conflicts:
+        // - same role: can't draw twice for the same role
+        // - opposite role: can't be both prezentujúci and náhradník on the same presentation
+        var excludedFromThis = role.HasValue
+            ? task.PresentationStudents.Select(ps => ps.StudentId).ToHashSet()
+            : task.PresentationStudents.Select(ps => ps.StudentId).ToHashSet();
 
         var pool = task.Activity.Assignments
             .Select(a => a.Student)
-            .Where(s => s.IsActive && !assignedToThis.Contains(s.Id));
+            .Where(s => s.IsActive && !excludedFromThis.Contains(s.Id));
 
         if (!includeAlreadyAssigned)
         {
-            var assignedToAnyPres = await _db.PresentationStudents
-                .Where(ps => ps.TaskItem.ActivityId == task.ActivityId)
+            var query = _db.PresentationStudents
+                .Where(ps => ps.TaskItem.ActivityId == task.ActivityId);
+            if (role.HasValue)
+                query = query.Where(ps => ps.Role == role.Value);
+
+            var assignedToAnyPres = await query
                 .Select(ps => ps.StudentId)
                 .Distinct()
                 .ToListAsync();

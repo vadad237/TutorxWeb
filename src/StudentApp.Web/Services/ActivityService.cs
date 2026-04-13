@@ -114,6 +114,12 @@ public class ActivityService : IActivityService
                     t.Title,
                     t.PresentationDate,
                     t.PresentationStudents
+                        .Where(ps => ps.Role == PresentationRole.Presentee)
+                        .Select(ps => new PresentationStudentVm(ps.StudentId, ps.Student.FirstName + " " + ps.Student.LastName))
+                        .OrderBy(ps => ps.FullName)
+                        .ToList(),
+                    t.PresentationStudents
+                        .Where(ps => ps.Role == PresentationRole.Substitution)
                         .Select(ps => new PresentationStudentVm(ps.StudentId, ps.Student.FirstName + " " + ps.Student.LastName))
                         .OrderBy(ps => ps.FullName)
                         .ToList()

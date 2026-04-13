@@ -13,50 +13,11 @@
         Model?.Presentations ?? new List<DrawPresentationVm>());
     var initialPresIdsJson = System.Text.Json.JsonSerializer.Serialize(
         (ViewBag.InitialPresentationIds as List<int>) ?? new List<int>());
+    var initialPresRole = (string)(ViewBag.InitialPresRole ?? "0");
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/slot-machine.css" asp-append-version="true" />
-    <style>
-        /* Compact slot drum inside draw cards */
-        .slot-outer-compact {
-            width: 100% !important;
-            max-width: 100% !important;
-        }
-        .slot-outer-compact .slot-display {
-            height: 68px;
-        }
-        .slot-outer-compact .slot-name {
-            font-size: 1.35rem;
-        }
-        .slot-outer-compact::before,
-        .slot-outer-compact::after {
-            height: 16px;
-        }
-
-        /* Draw card glow states */
-        .draw-card-inner { transition: box-shadow .2s; }
-
-        /* Result pills inside cards */
-        .card-results-list .student-card {
-            padding: 6px 16px;
-            font-size: 0.9rem;
-        }
-
-        /* Add card placeholder */
-        #add-card-placeholder {
-            border: 2px dashed #dee2e6;
-            border-radius: .5rem;
-            background: transparent;
-            transition: border-color .15s, background .15s;
-            cursor: pointer;
-            min-height: 80px;
-        }
-        #add-card-placeholder:hover {
-            border-color: #0d6efd;
-            background: rgba(13,110,253,.04);
-        }
-    </style>
 }
 
 @if (noGroup)
@@ -109,6 +70,7 @@
      data-initial-ids='@Html.Raw(initialIdsJson)'
      data-presentations='@Html.Raw(presentationsJson)'
      data-initial-pres-ids='@Html.Raw(initialPresIdsJson)'
+     data-initial-pres-role='@initialPresRole'
      style="display:none"></div>
 
 <!-- Cards grid – populated by JS -->

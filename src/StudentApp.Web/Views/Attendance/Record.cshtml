@@ -85,27 +85,4 @@
     }
 </form>
 
-@section Scripts {
-<script>
-document.getElementById('dateInput').addEventListener('change', function() {
-    var gid = @Model.GroupId;
-    var date = this.value;
-    window.location.href = '/Attendance/Record?groupId=' + gid + '&date=' + date;
-});
-
-(function () {
-    function normalize(str) {
-        return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    }
-    var input = document.getElementById('studentSearch');
-    if (!input) return;
-    input.addEventListener('input', function () {
-        var filter = normalize(this.value.trim());
-        document.querySelectorAll('#attendanceTable tbody tr').forEach(function (row) {
-            var name = normalize(row.cells[0]?.textContent.trim() ?? '');
-            row.style.display = (!filter || name.includes(filter)) ? '' : 'none';
-        });
-    });
-})();
-</script>
-}
+@* Scripts loaded from site.js *@

@@ -148,8 +148,9 @@ public class CustomExportService : ICustomExportService
         }
 
         // --- Presentations ---
+        // presRoleMap[(studentId, taskId)] = "P" (Prezentujúci) or "N" (Náhradník)
         List<TaskItem> presentations = new();
-        HashSet<(int studentId, int taskId)> presAssignments = new();
+        Dictionary<(int studentId, int taskId), string> presRoleMap = new();
         if (request.IncludePresentations)
         {
             presentations = await _db.TaskItems
@@ -169,7 +170,10 @@ public class CustomExportService : ICustomExportService
                 headers.Add(($"{p.Activity.Name} › {p.Title} ({dateStr})", "presentations"));
 
                 foreach (var ps in p.PresentationStudents)
-                    presAssignments.Add((ps.StudentId, p.Id));
+                {
+                    var label = ps.Role == PresentationRole.Presentee ? "✓ (Prezentujúci)" : "✓ (Náhradník)";
+                    presRoleMap[(ps.StudentId, p.Id)] = label;
+                }
             }
         }
 
@@ -234,7 +238,7 @@ public class CustomExportService : ICustomExportService
             if (request.IncludePresentations)
             {
                 foreach (var pres in presentations)
-                    row.Add(presAssignments.Contains((student.Id, pres.Id)) ? "✓" : "");
+                    row.Add(presRoleMap.GetValueOrDefault((student.Id, pres.Id), ""));
             }
 
             rows.Add(row);
@@ -396,7 +400,7 @@ public class CustomExportService : ICustomExportService
             { "activities",    "Aktivity — ✓ znamená, že študent je priradený k danej aktivite" },
             { "tasks",         "Úlohy a hodnotenia — číselné skóre za každú úlohu, prázdne ak nie je hodnotené" },
             { "tasks-sum",     "Celkom za aktivitu — súčet všetkých skóre úloh v rámci aktivity" },
-            { "presentations", "Prezentácie — ✓ znamená, že študent je priradený k danej prezentácii" },
+            { "presentations", "Prezentácie — ✓ (Prezentujúci) = prezentujúci študent  |  ✓ (Náhradník) = náhradník  |  prázdne = nepriradený" },
             { "other",         "Ostatné atribúty — vlastné hodnoty atribútov na študenta" },
         };
 

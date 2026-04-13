@@ -168,10 +168,11 @@ else
                         </div>
                         <div>
                             <h6 class="mb-1 fw-semibold">Prezentácie</h6>
-                            <p class="text-muted small mb-2">Jeden stĺpec na prezentáciu — ✓ ak je študent priradený</p>
+                            <p class="text-muted small mb-2">Jeden stĺpec na prezentáciu — ✓ (Prezentujúci) / ✓ (Náhradník) / prázdne</p>
                             <div class="d-flex flex-wrap gap-1">
                                 <span class="badge rounded-pill" style="background:#fef5e4;color:#935116">Aktivita › Názov (dátum)</span>
-                                <span class="badge rounded-pill" style="background:#fef5e4;color:#935116">Priradený ✓</span>
+                                <span class="badge rounded-pill" style="background:#fef5e4;color:#935116">✓ (Prezentujúci)</span>
+                                <span class="badge rounded-pill" style="background:#fef5e4;color:#935116">✓ (Náhradník)</span>
                             </div>
                         </div>
                         <i class="bi bi-circle ms-auto text-muted check-icon" style="font-size:1.2rem"></i>
@@ -246,90 +247,4 @@ else
 
 } @* end else: group selected *@
 
-@section Styles {
-<style>
-.export-card { cursor: pointer; display: block; }
-.section-card {
-    transition: border-color .15s, box-shadow .15s;
-    border-color: #dee2e6 !important;
-    cursor: pointer;
-}
-.section-card.active {
-    border-color: #0d6efd !important;
-    box-shadow: 0 0 0 3px rgba(13,110,253,.12);
-}
-.section-card.active .check-icon { color: #0d6efd !important; }
-.section-card.active .check-icon::before { content: "\F26B"; } /* check-circle-fill */
-.section-card:not(.active) .check-icon::before { content: "\F287"; } /* circle */
-.cursor-pointer { cursor: pointer; }
-.format-radio .form-check-label { cursor: pointer; }
-.student-field-label { cursor: pointer; user-select: none; }
-.student-field-cb { display: none; }
-.student-field-badge {
-    transition: opacity .15s, background .15s;
-    border: 2px solid transparent;
-}
-.student-field-cb:checked + input + .student-field-badge,
-.student-field-cb:checked ~ .student-field-badge {
-    border-color: #1e3a5f;
-}
-.student-field-label.disabled .student-field-badge {
-    opacity: .45;
-    pointer-events: none;
-}
-</style>
-}
-
-@section Scripts {
-<script>
-document.querySelectorAll('.section-cb').forEach(function(cb) {
-    var cardId = cb.dataset.card;
-    var card = document.querySelector('.section-card[data-card="' + cardId + '"]');
-    var icon = card.querySelector('.check-icon');
-    var fieldLabels = card.querySelectorAll('.student-field-label');
-
-    function syncFields(enabled) {
-        fieldLabels.forEach(function(lbl) {
-            lbl.classList.toggle('disabled', !enabled);
-            var fcb = lbl.querySelector('.student-field-cb');
-            if (fcb) fcb.disabled = !enabled;
-        });
-    }
-
-    function sync() {
-        if (cb.checked) {
-            card.classList.add('active');
-            icon.className = 'bi bi-check-circle-fill ms-auto text-primary check-icon';
-            icon.style.fontSize = '1.2rem';
-        } else {
-            card.classList.remove('active');
-            icon.className = 'bi bi-circle ms-auto text-muted check-icon';
-            icon.style.fontSize = '1.2rem';
-        }
-        syncFields(cb.checked);
-    }
-
-    // Click anywhere on the card label toggles the checkbox
-    cb.closest('label').addEventListener('click', function(e) {
-        e.preventDefault();
-        cb.checked = !cb.checked;
-        sync();
-    });
-
-    // Toggle individual student field checkboxes
-    fieldLabels.forEach(function(lbl) {
-        lbl.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var fcb = lbl.querySelector('.student-field-cb');
-            if (fcb && !fcb.disabled) {
-                fcb.checked = !fcb.checked;
-                var badge = lbl.querySelector('.student-field-badge');
-                if (badge) badge.style.borderColor = fcb.checked ? '#1e3a5f' : 'transparent';
-            }
-        });
-    });
-
-    sync(); // initial state
-});
-</script>
-}
+@* Scripts loaded from site.js *@
