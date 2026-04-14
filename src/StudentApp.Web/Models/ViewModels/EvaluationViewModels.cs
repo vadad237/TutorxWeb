@@ -34,7 +34,6 @@ public class EvaluationCreateVm
     public string TaskName { get; set; } = null!;
 
     [Required]
-    [Range(0, 100, ErrorMessage = "Score must be between 0 and 100.")]
     public decimal Score { get; set; }
 
     [MaxLength(500)]
@@ -51,7 +50,6 @@ public class EvaluationEditVm
     public string TaskName { get; set; } = null!;
 
     [Required]
-    [Range(0, 100, ErrorMessage = "Score must be between 0 and 100.")]
     public decimal Score { get; set; }
 
     [MaxLength(500)]

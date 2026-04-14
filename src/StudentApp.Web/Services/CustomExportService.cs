@@ -215,7 +215,7 @@ public class CustomExportService : ICustomExportService
                     {
                         if (evalMap.TryGetValue((student.Id, task.Id), out var eval))
                         {
-                            row.Add(eval.Score.ToString("0.##"));
+                            row.Add(eval.Score.ToString("F2"));
                             actSum += eval.Score;
                             hasAny = true;
                         }
@@ -225,7 +225,7 @@ public class CustomExportService : ICustomExportService
                         }
                     }
                     // Total column for this activity
-                    row.Add(hasAny ? actSum.ToString("F1") : "");
+                    row.Add(hasAny ? actSum.ToString("F2") : "");
                 }
             }
 

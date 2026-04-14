@@ -63,7 +63,7 @@
                            class="text-decoration-none">@a.Name</a>
                     </td>
                     <td class="text-center">@(evals?.Count ?? 0)</td>
-                    <td class="text-center">@(evals != null ? evals.Sum(e => e.Score).ToString("F1") : "-")</td>
+                    <td class="text-center">@(evals != null ? evals.Sum(e => e.Score).ToString("F2") : "-")</td>
                 </tr>
             }
         </tbody>
@@ -73,7 +73,7 @@
                 <tr>
                     <td>Celkom</td>
                     <td class="text-center">@Model.Evaluations.Count</td>
-                    <td class="text-center">@Model.Evaluations.Sum(e => e.Score).ToString("F1")</td>
+                    <td class="text-center">@Model.Evaluations.Sum(e => e.Score).ToString("F2")</td>
                 </tr>
             </tfoot>
         }

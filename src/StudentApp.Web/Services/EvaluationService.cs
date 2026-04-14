@@ -121,7 +121,7 @@ public class EvaluationService : IEvaluationService
         {
             StudentId = studentId,
             TaskItemId = taskItemId,
-            Score = score,
+            Score = Math.Round(score, 2),
             Comment = comment?.Trim()
         };
         _db.Evaluations.Add(evaluation);
@@ -155,7 +155,7 @@ public class EvaluationService : IEvaluationService
         var evaluation = await _db.Evaluations.FindAsync(id);
         if (evaluation == null) return false;
 
-        evaluation.Score = score;
+        evaluation.Score = Math.Round(score, 2);
         evaluation.Comment = comment?.Trim();
         evaluation.EvaluatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();

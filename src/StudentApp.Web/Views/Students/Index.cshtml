@@ -118,7 +118,7 @@ else
                         else { <span class="badge bg-secondary">Neaktívny</span> }
                     </td>
                     <td>@s.AbsenceCount</td>
-                    <td>@(s.TotalScore.HasValue ? s.TotalScore.Value.ToString("F1") : "-")</td>
+                    <td>@(s.TotalScore.HasValue ? s.TotalScore.Value.ToString("F2") : "-")</td>
                     <td>
                         <div class="btn-group btn-group-sm">
                             <a asp-action="Details" asp-route-id="@s.Id" class="btn btn-sm btn-icon btn-outline-secondary"

@@ -1,7 +1,45 @@
-﻿// ── _Layout.cshtml — global confirm modal + tooltips ──────────────────────
+﻿// ── Toast notification utility ────────────────────────────────────────────
+function showToast(message, type) {
+    type = type || 'danger';
+    var container = document.getElementById('toastContainer');
+    if (!container) return;
+    var iconMap = {
+        success: 'bi-check-circle-fill',
+        danger:  'bi-exclamation-triangle-fill',
+        warning: 'bi-exclamation-circle-fill',
+        info:    'bi-info-circle-fill'
+    };
+    var icon = iconMap[type] || iconMap['danger'];
+    var toastEl = document.createElement('div');
+    toastEl.className = 'toast align-items-center text-bg-' + type + ' border-0';
+    toastEl.setAttribute('role', type === 'danger' || type === 'warning' ? 'alert' : 'status');
+    toastEl.setAttribute('aria-live', type === 'danger' || type === 'warning' ? 'assertive' : 'polite');
+    toastEl.setAttribute('aria-atomic', 'true');
+    toastEl.innerHTML =
+        '<div class="d-flex">' +
+        '<div class="toast-body d-flex align-items-center gap-2">' +
+        '<i class="bi ' + icon + ' flex-shrink-0"></i>' +
+        '<span>' + message + '</span>' +
+        '</div>' +
+        '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+        '</div>';
+    container.appendChild(toastEl);
+    var toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    toast.show();
+    toastEl.addEventListener('hidden.bs.toast', function () { toastEl.remove(); });
+}
+
+// ── _Layout.cshtml — global confirm modal + tooltips ──────────────────────
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
         new bootstrap.Tooltip(el);
+    });
+
+    document.querySelectorAll('tr[data-detail-url]').forEach(function (row) {
+        row.addEventListener('dblclick', function (e) {
+            if (e.target.closest('button, a, input, form')) return;
+            window.location.href = row.dataset.detailUrl;
+        });
     });
 
     document.querySelectorAll('[data-confirm]').forEach(function (el) {
@@ -24,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else if (el.dataset.url) {
                     fetch(el.dataset.url, { method: 'POST', headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' } })
                         .then(r => r.json())
-                        .then(d => { if (d.success) location.reload(); else alert(d.message); });
+                        .then(d => { if (d.success) location.reload(); else showToast(d.message); });
                 }
             });
             modal.show();
@@ -66,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
                         if (d.success) location.reload();
-                        else alert(d.message);
+                        else showToast(d.message);
                     });
             });
         });
@@ -81,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
                         if (d.success) location.reload();
-                        else alert(d.message);
+                        else showToast(d.message);
                     });
             });
         });
@@ -96,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
                         if (d.success) location.reload();
-                        else alert(d.message);
+                        else showToast(d.message);
                     });
             });
         });
@@ -165,13 +203,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: JSON.stringify(ids)
             }).then(function (r) {
                 if (!r.ok) {
-                    r.text().then(function (t) { alert('Auto-priradenie zlyhalo: ' + t); });
+                    r.text().then(function (t) { showToast('Auto-priradenie zlyhalo: ' + t); });
                     bulkAssignBtn.disabled = false;
                 } else {
                     location.reload();
                 }
             }).catch(function (err) {
-                alert('Chyba auto-priradenia: ' + err);
+                showToast('Chyba auto-priradenia: ' + err);
                 bulkAssignBtn.disabled = false;
             });
         });
@@ -196,9 +234,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
                         if (d.success) location.reload();
-                        else alert(d.message);
+                        else showToast(d.message);
                     })
-                    .catch(function () { alert('Vymazanie zlyhalo.'); });
+                    .catch(function () { showToast('Vymazanie zlyhalo.'); });
             });
             modal.show();
         });
@@ -222,9 +260,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
                         if (d.success) location.reload();
-                        else alert(d.message || 'Duplikovanie zlyhalo.');
+                        else showToast(d.message || 'Duplikovanie zlyhalo.');
                     })
-                    .catch(function () { alert('Duplikovanie zlyhalo.'); });
+                    .catch(function () { showToast('Duplikovanie zlyhalo.'); });
             });
             modal.show();
         });
@@ -255,9 +293,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }).then(function (r) { return r.json(); })
               .then(function (d) {
                   if (d.success) location.reload();
-                  else alert(d.message || 'Vymazanie zlyhalo.');
+                  else showToast(d.message || 'Vymazanie zlyhalo.');
               })
-              .catch(function () { alert('Vymazanie zlyhalo.'); });
+              .catch(function () { showToast('Vymazanie zlyhalo.'); });
         });
         modal.show();
     });
@@ -276,32 +314,57 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!form) return;
     var activityId = form.dataset.activityId;
     var token = form.querySelector('input[name="__RequestVerificationToken"]').value;
+    var selectAllCb = document.getElementById('selectAllStudents');
 
-    form.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+    function getStudentCheckboxes() {
+        return Array.from(form.querySelectorAll('input[name="studentIds"]'));
+    }
+
+    function syncSelectAll() {
+        var boxes = getStudentCheckboxes();
+        var checkedCount = boxes.filter(function (cb) { return cb.checked; }).length;
+        selectAllCb.checked = checkedCount === boxes.length && boxes.length > 0;
+        selectAllCb.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+    }
+
+    function saveAssignments() {
+        var checked = getStudentCheckboxes().filter(function (cb) { return cb.checked; });
+        var body = '__RequestVerificationToken=' + encodeURIComponent(token)
+            + '&activityId=' + activityId;
+        checked.forEach(function (c) { body += '&studentIds=' + encodeURIComponent(c.value); });
+        fetch('/Activities/SetActivityAssignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        }).then(function (r) {
+            if (r.ok) {
+                var badgeArea = document.getElementById('activity-badge-area');
+                if (checked.length === 0) {
+                    badgeArea.innerHTML = '<p class="text-muted small mb-0">Žiadni študenti zatiaľ neboli priradení.</p>';
+                } else {
+                    var html = '<div class="d-flex flex-wrap gap-1">';
+                    checked.forEach(function (c) {
+                        html += '<span class="badge bg-info text-dark">' + c.dataset.name + '</span>';
+                    });
+                    html += '</div>';
+                    badgeArea.innerHTML = html;
+                }
+            } else { showToast('Nepodarilo sa uložiť priradenie.'); }
+        });
+    }
+
+    if (selectAllCb) {
+        selectAllCb.addEventListener('change', function () {
+            getStudentCheckboxes().forEach(function (cb) { cb.checked = selectAllCb.checked; });
+            saveAssignments();
+        });
+        syncSelectAll();
+    }
+
+    getStudentCheckboxes().forEach(function (cb) {
         cb.addEventListener('change', function () {
-            var checked = Array.from(form.querySelectorAll('input[type="checkbox"]:checked'));
-            var body = '__RequestVerificationToken=' + encodeURIComponent(token)
-                + '&activityId=' + activityId;
-            checked.forEach(function (c) { body += '&studentIds=' + encodeURIComponent(c.value); });
-            fetch('/Activities/SetActivityAssignments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: body
-            }).then(function (r) {
-                if (r.ok) {
-                    var badgeArea = document.getElementById('activity-badge-area');
-                    if (checked.length === 0) {
-                        badgeArea.innerHTML = '<p class="text-muted small mb-0">Žiadni študenti zatiaľ neboli priradení.</p>';
-                    } else {
-                        var html = '<div class="d-flex flex-wrap gap-1">';
-                        checked.forEach(function (c) {
-                            html += '<span class="badge bg-info text-dark">' + c.dataset.name + '</span>';
-                        });
-                        html += '</div>';
-                        badgeArea.innerHTML = html;
-                    }
-                } else { alert('Nepodarilo sa uložiť priradenie.'); }
-            });
+            syncSelectAll();
+            saveAssignments();
         });
     });
 })();
@@ -320,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function () {
             body: 'title=' + encodeURIComponent(title) + '&activityId=' + activityId + '&isPresentation=false'
         })
         .then(function (r) { return r.json(); })
-        .then(function (d) { if (d.success) location.reload(); else alert(d.message); });
+        .then(function (d) { if (d.success) location.reload(); else showToast(d.message); });
     });
 
     document.getElementById('taskTitle').addEventListener('keypress', function (e) {
@@ -342,11 +405,219 @@ document.querySelectorAll('.btn-delete-task').forEach(function (btn) {
             modal.hide();
             fetch('/Tasks/Delete/' + taskId, { method: 'POST' })
                 .then(function (r) { return r.json(); })
-                .then(function (d) { if (d.success) location.reload(); else alert(d.message); });
+                .then(function (d) { if (d.success) location.reload(); else showToast(d.message); });
         });
         modal.show();
     });
 });
+
+(function () {
+    var addNumberedTasksBtn = document.getElementById('addNumberedTasksBtn');
+    if (!addNumberedTasksBtn) return;
+    var activityId = addNumberedTasksBtn.dataset.activityId;
+
+    var modalEl   = document.getElementById('addNumberedTasksModal');
+    var modal     = bootstrap.Modal.getOrCreateInstance(modalEl);
+    var input     = document.getElementById('numberedTasksCountInput');
+    var errorEl   = document.getElementById('numberedTasksCountError');
+    var confirmBtn = document.getElementById('numberedTasksModalConfirm');
+
+    addNumberedTasksBtn.addEventListener('click', function () {
+        input.value = '1';
+        errorEl.classList.add('d-none');
+        modal.show();
+        // Focus input after modal is shown
+        modalEl.addEventListener('shown.bs.modal', function handler() {
+            input.focus();
+            input.select();
+            modalEl.removeEventListener('shown.bs.modal', handler);
+        });
+    });
+
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); confirmBtn.click(); }
+    });
+
+    confirmBtn.addEventListener('click', function () {
+        var count = parseInt(input.value, 10);
+        if (isNaN(count) || count <= 0 || count > 100) {
+            errorEl.classList.remove('d-none');
+            input.focus();
+            return;
+        }
+        errorEl.classList.add('d-none');
+        modal.hide();
+
+        fetch('/Tasks/CreateNumbered', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'activityId=' + activityId + '&count=' + count
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (!d.success) { showToast(d.message); return; }
+
+                var tbody = document.getElementById('numberedTasksTbody');
+            var table = document.getElementById('numberedTasksTable');
+            var empty = document.getElementById('numberedTasksEmpty');
+            var heading = document.querySelector('#addNumberedTasksBtn').closest('.card-body').querySelector('h5');
+
+            d.tasks.forEach(function (t) {
+                var dropdownHtml = (window.buildNumberedTaskDropdownHtml ? window.buildNumberedTaskDropdownHtml(t.taskId) : '');
+                var badgeAreaHtml = '<div class="pres-badge-area d-flex flex-wrap gap-1" id="num-task-badges-' + t.taskId + '"><span class="text-muted small">Žiadni</span></div>';
+                var studentCell = '<div class="d-flex align-items-center gap-2 flex-wrap">' + badgeAreaHtml + dropdownHtml + '</div>';
+
+                var tr = document.createElement('tr');
+                tr.dataset.taskId = t.taskId;
+                tr.innerHTML =
+                    '<td><input type="checkbox" class="form-check-input numbered-task-row-check" value="' + t.taskId + '" /></td>' +
+                    '<td>' + t.number + '</td>' +
+                    '<td>' + studentCell + '</td>' +
+                    '<td><button type="button" class="btn btn-sm btn-outline-danger btn-delete-task" data-id="' + t.taskId + '">' +
+                    '<i class="bi bi-trash"></i></button></td>';
+                tbody.appendChild(tr);
+
+                // Wire new row checkbox into selection toolbar
+                var newCb = tr.querySelector('.numbered-task-row-check');
+                if (newCb && window.wireNumberedTaskCheckbox) window.wireNumberedTaskCheckbox(newCb);
+
+                // Wire student dropdown for dynamically added row
+                var dropdown = tr.querySelector('.numbered-task-student-dropdown');
+                if (dropdown && window.wireNumberedTaskDropdown) window.wireNumberedTaskDropdown(dropdown);
+
+                // Wire up delete on dynamically added button
+                tr.querySelector('.btn-delete-task').addEventListener('click', function () {
+                    deleteTask(t.taskId, tr);
+                });
+            });
+
+            if (empty) empty.classList.add('d-none');
+            if (table) table.classList.remove('d-none');
+
+            // Update heading count
+            if (heading) {
+                var newCount = tbody.querySelectorAll('tr').length;
+                heading.textContent = 'Zadania (' + newCount + ')';
+            }
+        })
+        .catch(function () { showToast('Nepodarilo sa pridať zadania.'); });
+    });
+
+    function deleteTask(taskId, row) {
+        var modalEl = document.getElementById('confirmModal');
+        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        document.getElementById('confirmModalTitle').textContent = 'Vymazať zadanie';
+        document.getElementById('confirmModalBody').textContent = 'Vymazať toto zadanie? Túto akciu nemožno vrátiť.';
+        var actionBtn = document.getElementById('confirmModalAction');
+        var newBtn = actionBtn.cloneNode(true);
+        actionBtn.parentNode.replaceChild(newBtn, actionBtn);
+        newBtn.addEventListener('click', function () {
+            modal.hide();
+            fetch('/Tasks/Delete/' + taskId, { method: 'POST' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) { showToast(d.message || 'Vymazanie zlyhalo.'); return; }
+                    row.remove();
+                    var tbody = document.getElementById('numberedTasksTbody');
+                    var table = document.getElementById('numberedTasksTable');
+                    var empty = document.getElementById('numberedTasksEmpty');
+                    var heading = document.querySelector('#addNumberedTasksBtn').closest('.card-body').querySelector('h5');
+                    var remaining = tbody.querySelectorAll('tr').length;
+                    if (remaining === 0) {
+                        if (table) table.classList.add('d-none');
+                        if (empty) empty.classList.remove('d-none');
+                    }
+                    if (heading) heading.textContent = 'Zadania (' + remaining + ')';
+                })
+                .catch(function () { showToast('Vymazanie zlyhalo.'); });
+        });
+        modal.show();
+    }
+
+    // Wire delete on server-rendered rows
+    document.querySelectorAll('#numberedTasksTbody .btn-delete-task').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            deleteTask(parseInt(btn.dataset.id), btn.closest('tr'));
+        });
+    });
+})();
+
+(function () {
+    var autoAssignBtn = document.getElementById('autoAssignNumberedBtn');
+    var selectAll     = document.getElementById('numberedTaskSelectAll');
+    var countLabel    = document.getElementById('numberedTaskSelectionCount');
+    if (!autoAssignBtn && !selectAll) return;
+
+    var activityId = autoAssignBtn ? autoAssignBtn.dataset.activityId : null;
+
+    function getChecked() {
+        return Array.from(document.querySelectorAll('.numbered-task-row-check:checked'));
+    }
+
+    function updateToolbar() {
+        var checked = getChecked();
+        var count = checked.length;
+        if (countLabel) {
+            countLabel.textContent = count + ' vybraných';
+            countLabel.classList.toggle('d-none', count === 0);
+        }
+        if (autoAssignBtn) autoAssignBtn.disabled = count === 0;
+        var total = document.querySelectorAll('.numbered-task-row-check').length;
+        if (selectAll) {
+            selectAll.checked = count === total && total > 0;
+            selectAll.indeterminate = count > 0 && count < total;
+        }
+    }
+
+    function wireCheckbox(cb) {
+        cb.addEventListener('change', updateToolbar);
+    }
+    window.wireNumberedTaskCheckbox = wireCheckbox;
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            document.querySelectorAll('.numbered-task-row-check').forEach(function (cb) {
+                cb.checked = selectAll.checked;
+            });
+            updateToolbar();
+        });
+    }
+
+    document.querySelectorAll('.numbered-task-row-check').forEach(wireCheckbox);
+
+    if (autoAssignBtn) {
+        autoAssignBtn.addEventListener('click', function () {
+            var checked = getChecked();
+            if (checked.length === 0) return;
+            var modalEl = document.getElementById('confirmModal');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            document.getElementById('confirmModalTitle').textContent = 'Auto-priradenie zadaní';
+            document.getElementById('confirmModalBody').textContent =
+                'Náhodne priradiť všetkých priradených študentov k ' + checked.length +
+                ' vybraným zadaniam? Existujúce priradenia študentov k týmto zadaniam budú prepísané.';
+            var actionBtn = document.getElementById('confirmModalAction');
+            var newBtn = actionBtn.cloneNode(true);
+            actionBtn.parentNode.replaceChild(newBtn, actionBtn);
+            newBtn.addEventListener('click', function () {
+                modal.hide();
+                autoAssignBtn.disabled = true;
+                var taskIds = checked.map(function (cb) { return parseInt(cb.value); });
+                fetch('/Tasks/AutoAssignNumbered', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ activityId: parseInt(activityId), taskIds: taskIds })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d.success) { location.reload(); }
+                    else { showToast(d.message || 'Auto-priradenie zlyhalo.'); autoAssignBtn.disabled = false; }
+                    })
+                    .catch(function () { showToast('Auto-priradenie zlyhalo.'); autoAssignBtn.disabled = false; });
+            });
+            modal.show();
+        });
+    }
+})();
 
 (function () {
     var addPresBtn = document.getElementById('addPresBtn');
@@ -365,7 +636,7 @@ document.querySelectorAll('.btn-delete-task').forEach(function (btn) {
             body: body
         })
         .then(function (r) { return r.json(); })
-        .then(function (d) { if (d.success) location.reload(); else alert(d.message); });
+        .then(function (d) { if (d.success) location.reload(); else showToast(d.message); });
     });
 
     document.getElementById('presTitle').addEventListener('keypress', function (e) {
@@ -412,7 +683,7 @@ document.querySelectorAll('.pres-date-input').forEach(function (input) {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'activityId=' + activityId + '&name=' + encodeURIComponent(name)
         }).then(function (r) { return r.json(); })
-          .then(function (d) { if (d.success) location.reload(); else alert(d.message); });
+          .then(function (d) { if (d.success) location.reload(); else showToast(d.message); });
     });
 
     nameInput.addEventListener('keypress', function (e) {
@@ -659,11 +930,64 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
                                 return '<span class="badge ' + badgeClass + '">' + c.dataset.name + '</span>';
                             }).join('');
                         }
-                    } else { alert('Nepodarilo sa uložiť priradenie študentov.'); }
+                    } else { showToast('Nepodarilo sa uložiť priradenie študentov.'); }
                 });
             });
         });
     });
+})();
+
+(function () {
+    var dataEl = document.getElementById('assigned-students-data');
+    var assignedStudents = dataEl ? JSON.parse(dataEl.textContent) : [];
+
+    function buildNumberedTaskDropdownHtml(taskId) {
+        if (!assignedStudents.length) return '';
+        var items = assignedStudents.map(function (s) {
+            return '<li><label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">' +
+                '<input class="form-check-input mt-0 flex-shrink-0 pres-student-cb" type="checkbox" value="' + s.id + '" data-name="' + s.name.replace(/"/g, '&quot;') + '" />' +
+                s.name + '</label></li>';
+        }).join('');
+        return '<div class="dropdown numbered-task-student-dropdown" data-task-id="' + taskId + '" data-badge-area="num-task-badges-' + taskId + '">' +
+            '<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">' +
+            '<i class="bi bi-people"></i></button>' +
+            '<ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">' + items + '</ul>' +
+            '</div>';
+    }
+
+    function wireNumberedTaskDropdown(dropdown) {
+        var taskId  = dropdown.dataset.taskId;
+        var badgeId = dropdown.dataset.badgeArea;
+        dropdown.querySelectorAll('.pres-student-cb').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var checked = Array.from(dropdown.querySelectorAll('.pres-student-cb:checked'));
+                var body = 'taskId=' + taskId + '&role=0';
+                checked.forEach(function (c) { body += '&studentIds=' + c.value; });
+                fetch('/Tasks/SetPresentationStudentsByRole', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: body
+                }).then(function (r) {
+                    if (r.ok) {
+                        var badgeArea = document.getElementById(badgeId);
+                        if (!badgeArea) return;
+                        if (checked.length === 0) {
+                            badgeArea.innerHTML = '<span class="text-muted small">Žiadni</span>';
+                        } else {
+                            badgeArea.innerHTML = checked.map(function (c) {
+                                return '<span class="badge bg-primary">' + c.dataset.name + '</span>';
+                            }).join('');
+                        }
+                    } else { showToast('Nepodarilo sa uložiť priradenie študentov.'); }
+                });
+            });
+        });
+    }
+
+    document.querySelectorAll('.numbered-task-student-dropdown').forEach(wireNumberedTaskDropdown);
+
+    window.buildNumberedTaskDropdownHtml
+    window.wireNumberedTaskDropdown = wireNumberedTaskDropdown;
 })();
 
 document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
@@ -814,17 +1138,78 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
 
 // ── Evaluations/Index.cshtml ──────────────────────────────────────────────
 (function () {
+    var SEARCH_KEY   = 'evalFilter_search';
+    var ACTIVITY_KEY = 'evalFilter_activity';
+
     function normalize(str) {
         return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     }
-    var input = document.getElementById('studentSearch');
-    if (!input || !document.getElementById('evalTable')) return;
-    input.addEventListener('input', function () {
-        var filter = normalize(this.value.trim());
+
+    var input  = document.getElementById('studentSearch');
+    var select = document.getElementById('activityFilterSelect');
+    if (!input || !select || !document.getElementById('evalTable')) return;
+
+    function applySearchFilter(filter) {
         document.querySelectorAll('#evalTable tbody tr').forEach(function (row) {
             var name = normalize(row.cells[0]?.textContent.trim() ?? '');
             row.style.display = (!filter || name.includes(filter)) ? '' : 'none';
         });
+    }
+
+    function applyActivityFilter(val) {
+        document.querySelectorAll('#evalTable [data-activity-id]').forEach(function (el) {
+            el.style.display = (!val || el.dataset.activityId === val) ? '' : 'none';
+        });
+        recalcTotals();
+    }
+
+    function recalcTotals() {
+        document.querySelectorAll('#evalTable tbody tr').forEach(function (row) {
+            var total = 0;
+            var hasAny = false;
+            row.querySelectorAll('[data-sum-col]').forEach(function (cell) {
+                if (cell.style.display === 'none') return;
+                var val = parseFloat(cell.textContent.trim().replace(',', '.'));
+                if (!isNaN(val)) { total += val; hasAny = true; }
+            });
+            var totalCell = row.querySelector('[data-total-col]');
+            if (totalCell) {
+                totalCell.textContent = hasAny ? total.toFixed(2).replace('.', ',') : '-';
+            }
+        });
+    }
+
+    // Restore saved state on load
+    var savedSearch   = sessionStorage.getItem(SEARCH_KEY)   || '';
+    var savedActivity = sessionStorage.getItem(ACTIVITY_KEY) || '';
+
+    if (savedSearch) {
+        input.value = savedSearch;
+        applySearchFilter(normalize(savedSearch));
+    }
+    if (savedActivity) {
+        select.value = savedActivity;
+        applyActivityFilter(savedActivity);
+    }
+
+    // Save state on change and apply filter
+    input.addEventListener('input', function () {
+        var filter = normalize(this.value.trim());
+        sessionStorage.setItem(SEARCH_KEY, this.value.trim());
+        applySearchFilter(filter);
+    });
+
+    select.addEventListener('change', function () {
+        sessionStorage.setItem(ACTIVITY_KEY, this.value);
+        applyActivityFilter(this.value);
+    });
+
+    // Clear saved eval filters when navigating away to a non-eval page
+    document.addEventListener('click', function (e) {
+        var link = e.target.closest('a[href]');
+        if (!link || link.classList.contains('eval-nav-link')) return;
+        sessionStorage.removeItem(SEARCH_KEY);
+        sessionStorage.removeItem(ACTIVITY_KEY);
     });
 })();
 
@@ -952,9 +1337,9 @@ var updateToolbar;
             }).then(function (r) { return r.json(); })
               .then(function (d) {
                   if (d.success) location.reload();
-                  else alert(d.message || action + ' zlyhalo.');
+                  else showToast(d.message || action + ' zlyhalo.');
               })
-              .catch(function () { alert(action + ' zlyhalo.'); });
+              .catch(function () { showToast(action + ' zlyhalo.'); });
         });
         modal.show();
     }
@@ -987,9 +1372,9 @@ var updateToolbar;
             }).then(function (r) { return r.json(); })
               .then(function (d) {
                   if (d.success) location.reload();
-                  else alert(d.message || 'Vymazanie zlyhalo.');
+                  else showToast(d.message || 'Vymazanie zlyhalo.');
               })
-              .catch(function () { alert('Vymazanie zlyhalo.'); });
+              .catch(function () { showToast('Vymazanie zlyhalo.'); });
         });
         modal.show();
     });
@@ -1012,18 +1397,11 @@ var updateToolbar;
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
                         if (d.success) location.reload();
-                        else alert(d.message || 'Vymazanie zlyhalo.');
+                        else showToast(d.message || 'Vymazanie zlyhalo.');
                     })
-                    .catch(function () { alert('Vymazanie zlyhalo.'); });
+                    .catch(function () { showToast('Vymazanie zlyhalo.'); });
             });
             modal.show();
-        });
-    });
-
-    document.querySelectorAll('tr[data-detail-url]').forEach(function (row) {
-        row.addEventListener('dblclick', function (e) {
-            if (e.target.closest('button, a, input, form')) return;
-            window.location.href = row.dataset.detailUrl;
         });
     });
 
@@ -1064,6 +1442,50 @@ var updateToolbar;
                         : bVal.localeCompare(aVal, 'sk');
                 });
                 rows.forEach(function (row) { studentsTbody.appendChild(row); });
+            });
+        });
+    }
+})();
+
+// ── Activities/Index.cshtml ───────────────────────────────────────────────
+(function () {
+    var activitiesTable = document.getElementById('activitiesTable');
+    if (activitiesTable) {
+        var activitiesTbody = activitiesTable.querySelector('tbody');
+        var sortColIdx = -1;
+        var sortAsc = true;
+
+        activitiesTable.querySelectorAll('thead th[data-sort]').forEach(function (th) {
+            th.addEventListener('click', function () {
+                var colIdx = Array.from(th.closest('tr').children).indexOf(th);
+                var isNum  = th.dataset.sort === 'num';
+
+                if (sortColIdx === colIdx) {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortColIdx = colIdx;
+                    sortAsc = true;
+                }
+
+                activitiesTable.querySelectorAll('thead th[data-sort]').forEach(function (h) {
+                    h.classList.remove('sort-asc', 'sort-desc');
+                });
+                th.classList.add(sortAsc ? 'sort-asc' : 'sort-desc');
+
+                var rows = Array.from(activitiesTbody.querySelectorAll('tr'));
+                rows.sort(function (a, b) {
+                    var aVal = a.cells[colIdx] ? a.cells[colIdx].textContent.trim() : '';
+                    var bVal = b.cells[colIdx] ? b.cells[colIdx].textContent.trim() : '';
+                    if (isNum) {
+                        var aNum = parseFloat(aVal.replace(',', '.')) || 0;
+                        var bNum = parseFloat(bVal.replace(',', '.')) || 0;
+                        return sortAsc ? aNum - bNum : bNum - aNum;
+                    }
+                    return sortAsc
+                        ? aVal.localeCompare(bVal, 'sk')
+                        : bVal.localeCompare(aVal, 'sk');
+                });
+                rows.forEach(function (row) { activitiesTbody.appendChild(row); });
             });
         });
     }

@@ -24,6 +24,17 @@ public class TasksController : Controller
     }
 
     [HttpPost]
+    public async Task<IActionResult> CreateNumbered(int activityId, int count)
+    {
+        if (count <= 0 || count > 100)
+            return Json(new { success = false, message = "Počet musí byť medzi 1 a 100." });
+
+        var tasks = await _taskService.CreateNumberedTasksAsync(activityId, count);
+        var result = tasks.Select(t => new { taskId = t.Id, number = int.Parse(t.Title) }).ToList();
+        return Json(new { success = true, tasks = result });
+    }
+
+    [HttpPost]
     public async Task<IActionResult> SetTitle(int id, string title)
     {
         if (string.IsNullOrWhiteSpace(title))
@@ -66,6 +77,16 @@ public class TasksController : Controller
         return Json(new { success = true, activityId });
     }
 
+    [HttpPost]
+    public async Task<IActionResult> AutoAssignNumbered([FromBody] AutoAssignNumberedRequest req)
+    {
+        if (req.TaskIds == null || req.TaskIds.Length == 0)
+            return Json(new { success = false, message = "Žiadne zadania neboli vybrané." });
+
+        var (success, message) = await _taskService.AutoAssignNumberedTasksAsync(req.ActivityId, req.TaskIds);
+        return Json(new { success, message });
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetEligiblePresentationStudents(int taskId, bool includeAlreadyAssigned = false, int? role = null)
     {
@@ -76,3 +97,5 @@ public class TasksController : Controller
         return Json(eligible);
     }
 }
+
+public record AutoAssignNumberedRequest(int ActivityId, int[] TaskIds);

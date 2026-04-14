@@ -35,7 +35,7 @@ public class ExportService : IExportService
             csv.WriteField(s.IsActive ? "Áno" : "Nie");
             csv.WriteField(s.Attendances.Count(a => a.Status == AttendanceStatus.Absent));
             var scores = s.Evaluations.Select(e => e.Score).ToList();
-            csv.WriteField(scores.Count > 0 ? scores.Average().ToString("F1") : "-");
+            csv.WriteField(scores.Count > 0 ? scores.Average().ToString("F2") : "-");
             await csv.NextRecordAsync();
         }
         await writer.FlushAsync();
@@ -228,7 +228,7 @@ public class ExportService : IExportService
             var eval = a.TaskItemId.HasValue
                 ? await _db.Evaluations.FirstOrDefaultAsync(e => e.StudentId == a.StudentId && e.TaskItemId == a.TaskItemId)
                 : null;
-            ws.Cell(row, 2).Value = eval != null ? eval.Score.ToString("F1") : "-";
+            ws.Cell(row, 2).Value = eval != null ? eval.Score.ToString("F2") : "-";
             row++;
         }
         ws.Columns().AdjustToContents();

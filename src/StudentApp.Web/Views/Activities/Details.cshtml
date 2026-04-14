@@ -4,6 +4,14 @@
     var allStudents = (List<StudentSummaryVm>)ViewBag.AllStudents;
 }
 
+@if (Model.AssignedStudents.Any())
+{
+    <script id="assigned-students-data" type="application/json">
+        @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.AssignedStudents.Select(s => new { id = s.StudentId, name = s.FullName })))
+    </script>
+}
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>@Model.Name</h2>
     <div>
@@ -48,6 +56,12 @@
                     <i class="bi bi-people me-1"></i>Vybrať študentov
                 </button>
                 <ul class="dropdown-menu p-2" style="min-width:230px; max-height:260px; overflow-y:auto">
+                    <li>
+                        <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2 border-bottom mb-1" style="cursor:pointer">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="selectAllStudents" />
+                            <strong>Vybrať všetkých</strong>
+                        </label>
+                    </li>
                     @foreach (var student in allStudents)
                     {
                         var isChecked = Model.AssignedStudents.Any(a => a.StudentId == student.Id);
@@ -73,9 +87,100 @@
     </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     TASKS SECTION
-     ══════════════════════════════════════════════════════ -->
+<!-- Zadania Section -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Zadania (@Model.NumberedTasks.Count)</h5>
+            <div class="d-flex align-items-center gap-2">
+                <span id="numberedTaskSelectionCount" class="text-muted small d-none"></span>
+                <button type="button" id="autoAssignNumberedBtn" class="btn btn-sm btn-outline-success" disabled
+                        data-activity-id="@Model.Id"
+                        @(!Model.AssignedStudents.Any() ? "title=\"Najskôr priraďte študentov k aktivite\"" : "")>
+                    <i class="bi bi-shuffle me-1"></i>Auto-priradenie
+                </button>
+                <button type="button" id="addNumberedTasksBtn" class="btn btn-sm btn-primary"
+                        data-activity-id="@Model.Id">
+                    <i class="bi bi-plus-lg me-1"></i>Pridať zadania
+                </button>
+            </div>
+        </div>
+        @if (!Model.NumberedTasks.Any())
+        {
+            <p class="text-muted small mb-0" id="numberedTasksEmpty">Žiadne zadania. Pridajte ich tlačidlom vyššie.</p>
+        }
+        <table class="table table-sm table-striped align-middle mb-0 @(!Model.NumberedTasks.Any() ? "d-none" : "")" id="numberedTasksTable">
+            <thead class="table-dark">
+                <tr>
+                    <th style="width:2rem">
+                        <input type="checkbox" id="numberedTaskSelectAll" class="form-check-input" title="Označiť všetko" />
+                    </th>
+                    <th style="width:60px">#</th>
+                    <th>Priradení študenti</th>
+                    <th style="width:60px">Akcie</th>
+                </tr>
+            </thead>
+            <tbody id="numberedTasksTbody">
+                @foreach (var t in Model.NumberedTasks)
+                {
+                    <tr data-task-id="@t.TaskId">
+                        <td>
+                            <input type="checkbox" class="form-check-input numbered-task-row-check" value="@t.TaskId" />
+                        </td>
+                        <td>@t.Number</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <div class="pres-badge-area d-flex flex-wrap gap-1" id="num-task-badges-@t.TaskId">
+                                    @if (t.AssignedStudents.Any())
+                                    {
+                                        @foreach (var s in t.AssignedStudents)
+                                        {
+                                            <span class="badge bg-primary">@s.FullName</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Žiadni</span>
+                                    }
+                                </div>
+                                @if (Model.AssignedStudents.Any())
+                                {
+                                    <div class="dropdown numbered-task-student-dropdown" data-task-id="@t.TaskId" data-badge-area="num-task-badges-@t.TaskId">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                            <i class="bi bi-people"></i>
+                                        </button>
+                                        <ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">
+                                            @foreach (var s in Model.AssignedStudents)
+                                            {
+                                                var isAssigned = t.AssignedStudents.Any(ps => ps.StudentId == s.StudentId);
+                                                <li>
+                                                    <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">
+                                                        <input class="form-check-input mt-0 flex-shrink-0 pres-student-cb"
+                                                               type="checkbox" value="@s.StudentId" data-name="@s.FullName"
+                                                               @(isAssigned ? "checked" : "") />
+                                                        @s.FullName
+                                                    </label>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            </div>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-task"
+                                    data-id="@t.TaskId">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <div class="card mb-3">
     <div class="card-body">
         <h5>Pridať úlohu</h5>
@@ -422,3 +527,23 @@ else
     </div>
 </div>
 @* Scripts loaded from site.js *@
+
+<div class="modal fade" id="addNumberedTasksModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Pridať zadania</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label for="numberedTasksCountInput" class="form-label">Koľko zadaní pridať?</label>
+                <input type="number" id="numberedTasksCountInput" class="form-control" value="1" min="1" max="100" />
+                <div id="numberedTasksCountError" class="text-danger small mt-1 d-none">Zadajte číslo medzi 1 a 100.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                <button type="button" id="numberedTasksModalConfirm" class="btn btn-primary">Pridať</button>
+            </div>
+        </div>
+    </div>
+</div>

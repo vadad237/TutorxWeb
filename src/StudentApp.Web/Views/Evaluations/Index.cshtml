@@ -18,23 +18,35 @@ else
         .Select(g => (ActivityId: g.Key, ActivityName: g.First().ActivityName, Tasks: g.ToList()))
         .ToList();
 
-    <div class="mb-2" style="max-width:300px;">
-        <div class="input-group input-group-sm">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="search" id="studentSearch" class="form-control"
-                   placeholder="Hľadať študenta…" autocomplete="off" />
+    <div class="mb-2 row g-2 align-items-center">
+        <div class="col-auto">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="search" id="studentSearch" class="form-control"
+                       placeholder="Hľadať študenta…" autocomplete="off" style="min-width:220px;" />
+            </div>
+        </div>
+        <div class="col-auto">
+            <select id="activityFilterSelect" class="form-select form-select-sm" style="min-width:200px; max-width:300px;">
+                <option value="">Všetky aktivity</option>
+                @foreach (var act in activities)
+                {
+                    <option value="@act.ActivityId">@act.ActivityName</option>
+                }
+            </select>
         </div>
     </div>
     <div class="table-responsive eval-wrap">
         <table class="table table-bordered table-sm" id="evalTable">
             <thead>
                 <tr class="table-dark">
-                    <th>Študent</th>
+                    <th style="min-width:180px; background:#212529;">Študent</th>
                     @foreach (var act in activities)
                     {
                         @foreach (var t in act.Tasks)
                         {
-                            <th class="text-center @(t.IsPresentation ? "table-info" : "")" style="min-width:90px;">
+                            <th class="text-center @(t.IsPresentation ? "table-info" : "")" style="min-width:90px;"
+                                data-activity-id="@act.ActivityId">
                                 <div class="small fw-normal @(t.IsPresentation ? "text-dark opacity-75" : "text-white-50")">@t.ActivityName</div>
                                 <div>@t.Title</div>
                                 @if (t.IsPresentation)
@@ -43,44 +55,55 @@ else
                                 }
                             </th>
                         }
-                        <th class="text-center table-warning" style="min-width:70px;">
+                        <th class="text-center table-warning" style="min-width:70px;"
+                            data-activity-id="@act.ActivityId" data-sum-col="@act.ActivityId">
                             <div class="small fw-normal text-dark opacity-75">@act.ActivityName</div>
                             <div>Súčet</div>
                         </th>
                     }
+                    <th class="text-center table-success" style="min-width:70px;" data-total-col="1">
+                        <div>Celkom</div>
+                    </th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var s in Model.Students)
                 {
                     <tr>
-                        <td><a asp-controller="Students" asp-action="Details" asp-route-id="@s.Id">@s.FullName</a></td>
+                        <td style="position:sticky; left:0; z-index:1; min-width:180px; background:#fff;"><a asp-controller="Students" asp-action="Details" asp-route-id="@s.Id">@s.FullName</a></td>
                         @foreach (var act in activities)
                         {
                             @foreach (var t in act.Tasks)
                             {
                                 var key = (s.Id, t.Id);
-                                <td class="text-center">
+                                <td class="text-center" data-activity-id="@act.ActivityId">
                                     @if (Model.Scores.TryGetValue(key, out var score))
                                     {
                                         var evalId = Model.EvaluationIds.GetValueOrDefault(key);
-                                        <a asp-action="Edit" asp-route-id="@evalId" class="text-decoration-none">
-                                            @score.ToString("F1")
+                                        <a asp-action="Edit" asp-route-id="@evalId" class="text-decoration-none eval-nav-link">
+                                            @score.ToString("F2")
                                         </a>
                                     }
                                     else
                                     {
                                         <a asp-action="Create" asp-route-studentId="@s.Id" asp-route-taskItemId="@t.Id"
-                                           class="text-decoration-none">
+                                           class="text-decoration-none eval-nav-link">
                                             <span class="badge bg-light text-secondary border border-dashed" style="font-size:.8rem;letter-spacing:.05em;">+</span>
                                         </a>
                                     }
                                 </td>
                             }
-                            <td class="text-center table-warning fw-bold">
-                                @(Model.ActivityStudentSums.TryGetValue((s.Id, act.ActivityId), out var aSum) ? aSum.ToString("F1") : "-")
+                            <td class="text-center table-warning fw-bold" data-activity-id="@act.ActivityId" data-sum-col="@act.ActivityId">
+                                @(Model.ActivityStudentSums.TryGetValue((s.Id, act.ActivityId), out var aSum) ? aSum.ToString("F2") : "-")
                             </td>
                         }
+                        @{
+                            var totalSum = activities.Sum(a =>
+                                Model.ActivityStudentSums.TryGetValue((s.Id, a.ActivityId), out var s2) ? s2 : 0m);
+                        }
+                        <td class="text-center table-success fw-bold" data-total-col="1">
+                            @(totalSum > 0 ? totalSum.ToString("F2") : "-")
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -98,6 +121,5 @@ else
     </div>
 }
 
-@* Scripts loaded from site.js *@
 
 }

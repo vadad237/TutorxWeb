@@ -53,6 +53,7 @@ public class ActivityDetailsVm
     public string GroupName { get; set; } = null!;
     public bool IsArchived { get; set; }
     public List<SimpleTaskVm> Tasks { get; set; } = [];
+    public List<NumberedTaskVm> NumberedTasks { get; set; } = [];
     public List<TaskWithAssignmentVm> Presentations { get; set; } = [];
     public List<AssignedStudentVm> AssignedStudents { get; set; } = [];
     public List<OtherAttributeVm> OtherAttributes { get; set; } = [];
@@ -68,7 +69,8 @@ public record AttributeOptionVm(int OptionId, string Name, string Color);
 public record OtherAttributeVm(int AttributeId, string Name, List<AttributeOptionVm> Options);
 public record StudentAttributeValueVm(int StudentId, int AttributeId, int? OptionId, string? OptionName, string? OptionColor);
 
-public record SimpleTaskVm(int TaskId, string Title);
+public record SimpleTaskVm(int TaskId, string Title, DateTime CreatedAt);
+public record NumberedTaskVm(int TaskId, int Number, List<PresentationStudentVm> AssignedStudents);
 
 public record PresentationStudentVm(int StudentId, string FullName);
 public record TaskWithAssignmentVm(int TaskId, string Title, DateTime? PresentationDate,

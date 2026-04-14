@@ -102,9 +102,22 @@ public class ActivityService : IActivityService
             GroupName = activity.Group.Name,
             IsArchived = activity.IsArchived,
             Tasks = activity.Tasks
-                .Where(t => !t.IsPresentation)
-                .OrderBy(t => t.Title)
-                .Select(t => new SimpleTaskVm(t.Id, t.Title))
+                .Where(t => !t.IsPresentation && !t.IsNumberedTask)
+                .OrderByDescending(t => t.CreatedAt)
+                .Select(t => new SimpleTaskVm(t.Id, t.Title, t.CreatedAt))
+                .ToList(),
+            NumberedTasks = activity.Tasks
+                .Where(t => t.IsNumberedTask)
+                .OrderBy(t => t.Title.Length).ThenBy(t => t.Title)
+                .Select((t, i) => new NumberedTaskVm(
+                    t.Id,
+                    int.TryParse(t.Title, out var n) ? n : i + 1,
+                    t.PresentationStudents
+                        .Where(ps => ps.Role == PresentationRole.Presentee)
+                        .Select(ps => new PresentationStudentVm(ps.StudentId, ps.Student.FirstName + " " + ps.Student.LastName))
+                        .OrderBy(ps => ps.FullName)
+                        .ToList()
+                ))
                 .ToList(),
             Presentations = activity.Tasks
                 .Where(t => t.IsPresentation)
