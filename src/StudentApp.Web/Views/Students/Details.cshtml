@@ -37,40 +37,49 @@
     </div>
 </div>
 
-<h4 class="mb-2">Priradené aktivity</h4>
+<h4 class="mb-2">Hodnotenia</h4>
+@{
+    var evalByActivity = Model.Evaluations
+        .GroupBy(e => new { e.ActivityId, e.ActivityName })
+        .ToDictionary(g => g.Key.ActivityId, g => g.ToList());
+}
 @if (Model.AssignedActivities.Any())
 {
-    <div class="d-flex flex-wrap gap-2 mb-4">
-        @foreach (var a in Model.AssignedActivities)
-        {
-            <a asp-controller="Activities" asp-action="Details" asp-route-id="@a.ActivityId"
-               class="badge text-decoration-none fs-6 fw-normal bg-primary">
-                @a.Name
-            </a>
-        }
-    </div>
-}
-else
-{
-    <p class="text-muted mb-4">Nie je priradený k žiadnym aktivitám.</p>
-}
-
-<h4>Hodnotenia</h4>
-@if (Model.Evaluations.Any())
-{
     <table class="table table-striped">
-        <thead><tr><th>Úloha</th><th>Skóre</th><th>Komentár</th><th>Dátum</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Aktivita</th>
+                <th class="text-center">Počet hodnotení</th>
+                <th class="text-center">Súčet skóre</th>
+            </tr>
+        </thead>
         <tbody>
-            @foreach (var e in Model.Evaluations)
+            @foreach (var a in Model.AssignedActivities)
             {
+                var evals = evalByActivity.GetValueOrDefault(a.ActivityId);
                 <tr>
-                    <td>@e.TaskName</td>
-                    <td>@e.Score.ToString("F1")</td>
-                    <td>@(e.Comment ?? "-")</td>
-                    <td>@e.EvaluatedAt.ToString("dd.MM.yyyy")</td>
+                    <td>
+                        <a asp-controller="Activities" asp-action="Details" asp-route-id="@a.ActivityId"
+                           class="text-decoration-none">@a.Name</a>
+                    </td>
+                    <td class="text-center">@(evals?.Count ?? 0)</td>
+                    <td class="text-center">@(evals != null ? evals.Sum(e => e.Score).ToString("F1") : "-")</td>
                 </tr>
             }
         </tbody>
+        @if (Model.Evaluations.Any())
+        {
+            <tfoot class="table-secondary fw-semibold">
+                <tr>
+                    <td>Celkom</td>
+                    <td class="text-center">@Model.Evaluations.Count</td>
+                    <td class="text-center">@Model.Evaluations.Sum(e => e.Score).ToString("F1")</td>
+                </tr>
+            </tfoot>
+        }
     </table>
 }
-else { <p class="text-muted">Žiadne hodnotenia.</p> }
+else
+{
+    <p class="text-muted">Nie je priradený k žiadnym aktivitám.</p>
+}

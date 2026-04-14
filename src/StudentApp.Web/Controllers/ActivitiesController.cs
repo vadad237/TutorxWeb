@@ -92,7 +92,7 @@ public class ActivitiesController : Controller
             await PopulateActiveGroupAsync();
             var groupName = await _groupService.GetGroupNameAsync(activeGroupId.Value);
             vm.GroupId = activeGroupId.Value;
-            vm.GroupName = groupName ?? "Unknown";
+            vm.GroupName = groupName ?? "Neznáma";
             return View(vm);
         }
 
@@ -159,7 +159,7 @@ public class ActivitiesController : Controller
     {
         var (exists, _) = await _activityService.DeleteActivityAsync(id);
         if (!exists)
-            return Json(new { success = false, message = "Activity not found." });
+            return Json(new { success = false, message = "Aktivita nebola nájdená." });
 
         return Json(new { success = true });
     }
@@ -183,7 +183,7 @@ public class ActivitiesController : Controller
     public async Task<IActionResult> BulkAssign([FromBody] int[]? activityIds)
     {
         if (activityIds == null || activityIds.Length == 0)
-            return BadRequest("No activities selected.");
+            return BadRequest("Žiadne aktivity neboli vybrané.");
         try
         {
             await _assignmentService.BulkAssignAsync(activityIds);
@@ -199,7 +199,7 @@ public class ActivitiesController : Controller
     public async Task<IActionResult> BulkDelete([FromBody] int[]? activityIds)
     {
         if (activityIds == null || activityIds.Length == 0)
-            return Json(new { success = false, message = "No activities selected." });
+            return Json(new { success = false, message = "Žiadne aktivity neboli vybrané." });
 
         await _activityService.BulkDeleteActivitiesAsync(activityIds.ToList());
         return Json(new { success = true });

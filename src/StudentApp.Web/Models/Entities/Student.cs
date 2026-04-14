@@ -21,6 +21,9 @@ public class Student
 
     public int? Year { get; set; }
 
+    [MaxLength(50)]
+    public string? GroupNumber { get; set; }
+
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public int GroupId { get; set; }

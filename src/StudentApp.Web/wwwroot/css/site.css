@@ -9,6 +9,30 @@
     z-index: 1000;
 }
 
+/* ── Students/Index.cshtml ──────────────────────────────────────────────── */
+tr[data-detail-url] {
+    cursor: pointer;
+}
+
+/* ── Students/ImportPreview.cshtml ──────────────────────────────────────── */
+th[data-sort] {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+th[data-sort]:hover {
+    background-color: #6c757d;
+    color: #fff;
+}
+th[data-sort].sort-asc .sort-icon::after {
+    content: ' \25B2';
+    font-size: 0.8em;
+}
+th[data-sort].sort-desc .sort-icon::after {
+    content: ' \25BC';
+    font-size: 0.8em;
+}
+
 #content {
     margin-left: 220px;
     min-height: 100vh;

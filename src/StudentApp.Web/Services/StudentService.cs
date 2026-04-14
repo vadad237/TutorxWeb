@@ -25,19 +25,30 @@ public class StudentService : IStudentService
             .Select(s => new StudentSummaryVm
             {
                 Id = s.Id,
+                FirstName = s.FirstName,
+                LastName = s.LastName,
                 FullName = s.FirstName + " " + s.LastName,
                 Email = s.Email,
                 CardNumber = s.CardNumber,
+                GroupNumber = s.GroupNumber,
                 Year = s.Year,
                 IsActive = s.IsActive,
                 AbsenceCount = s.Attendances.Count(a => a.Status == AttendanceStatus.Absent),
-                AvgScore = s.Evaluations.Any() ? s.Evaluations.Average(e => e.Score) : null,
+                TotalScore = s.Evaluations.Any() ? s.Evaluations.Sum(e => e.Score) : null,
                 GroupId = s.GroupId
             })
             .ToListAsync();
     }
 
-    public async Task<Student> CreateStudentAsync(string firstName, string lastName, string? email, string? cardNumber, int? year, int groupId)
+    public async Task<bool> IsCardNumberTakenAsync(string cardNumber, int? excludeStudentId = null)
+    {
+        var trimmed = cardNumber.Trim();
+        return await _db.Students.AnyAsync(s =>
+            s.CardNumber == trimmed &&
+            (excludeStudentId == null || s.Id != excludeStudentId));
+    }
+
+    public async Task<Student> CreateStudentAsync(string firstName, string lastName, string? email, string? cardNumber, int? year, string? groupNumber, int groupId)
     {
         var student = new Student
         {
@@ -46,6 +57,7 @@ public class StudentService : IStudentService
             Email = email?.Trim(),
             CardNumber = cardNumber?.Trim(),
             Year = year,
+            GroupNumber = groupNumber?.Trim(),
             GroupId = groupId
         };
         _db.Students.Add(student);
@@ -58,7 +70,7 @@ public class StudentService : IStudentService
         return await _db.Students.Include(s => s.Group).FirstOrDefaultAsync(s => s.Id == id);
     }
 
-    public async Task<Student?> UpdateStudentAsync(int id, string firstName, string lastName, string? email, string? cardNumber, int? year, bool isActive)
+    public async Task<Student?> UpdateStudentAsync(int id, string firstName, string lastName, string? email, string? cardNumber, int? year, string? groupNumber, bool isActive)
     {
         var student = await _db.Students.FindAsync(id);
         if (student == null) return null;
@@ -68,6 +80,7 @@ public class StudentService : IStudentService
         student.Email = email?.Trim();
         student.CardNumber = cardNumber?.Trim();
         student.Year = year;
+        student.GroupNumber = groupNumber?.Trim();
         student.IsActive = isActive;
         await _db.SaveChangesAsync();
         return student;
@@ -117,7 +130,9 @@ public class StudentService : IStudentService
                 .Select(e => new EvaluationItemVm
                 {
                     Id = e.Id,
-                    TaskName = e.TaskItem.Activity.Name + " — " + e.TaskItem.Title,
+                    ActivityId = e.TaskItem.ActivityId,
+                    ActivityName = e.TaskItem.Activity.Name,
+                    TaskName = e.TaskItem.Title,
                     Score = e.Score,
                     Comment = e.Comment,
                     EvaluatedAt = e.EvaluatedAt

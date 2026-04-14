@@ -10,6 +10,7 @@ else
     var groupId = (int)ViewBag.GroupId;
     var groupName = (string)ViewBag.GroupName;
     var years = Model.Where(s => s.Year.HasValue).Select(s => s.Year!.Value).Distinct().OrderBy(y => y).ToList();
+    var groupNumbers = Model.Where(s => s.GroupNumber != null).Select(s => s.GroupNumber!).Distinct().OrderBy(g => g).ToList();
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Študenti &mdash; @groupName</h2>
@@ -55,6 +56,15 @@ else
             }
         </select>
     </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <select id="groupNumberFilter" class="form-select form-select-sm">
+            <option value="">Všetky krúžky</option>
+            @foreach (var g in groupNumbers)
+            {
+                <option value="@g">@g</option>
+            }
+        </select>
+    </div>
     <div class="col-auto">
         <button type="button" id="clearFilters" class="btn btn-sm btn-outline-secondary d-none">
             <i class="bi bi-x-lg me-1"></i>Zrušiť filtre
@@ -65,19 +75,21 @@ else
     </div>
 </div>
 
-    <table class="table table-striped table-hover">
+    <table id="studentsTable" class="table table-striped table-hover">
         <thead class="table-dark">
             <tr>
                 <th style="width:2.5rem">
                     <input type="checkbox" id="selectAll" class="form-check-input" title="Označiť všetko" />
                 </th>
-                <th>Meno</th>
-                <th>Email</th>
-                <th>Číslo karty</th>
-                <th>Ročník</th>
-                <th>Stav</th>
-                <th>Absencie</th>
-                <th>Priemer</th>
+                <th data-sort="text">Meno<span class="sort-icon"></span></th>
+                <th data-sort="text">Priezvisko<span class="sort-icon"></span></th>
+                <th data-sort="text">Email<span class="sort-icon"></span></th>
+                <th data-sort="text">Číslo karty<span class="sort-icon"></span></th>
+                <th data-sort="text">Krúžok<span class="sort-icon"></span></th>
+                <th data-sort="num">Ročník<span class="sort-icon"></span></th>
+                <th data-sort="text">Stav<span class="sort-icon"></span></th>
+                <th data-sort="num">Absencie<span class="sort-icon"></span></th>
+                <th data-sort="num">Súčet<span class="sort-icon"></span></th>
                 <th>Akcie</th>
             </tr>
         </thead>
@@ -89,22 +101,30 @@ else
                     data-email="@(s.Email?.ToLowerInvariant() ?? "")"
                     data-card="@(s.CardNumber?.ToLowerInvariant() ?? "")"
                     data-active="@(s.IsActive ? "active" : "inactive")"
-                    data-year="@(s.Year.HasValue ? s.Year.Value.ToString() : "")">
+                    data-year="@(s.Year.HasValue ? s.Year.Value.ToString() : "")"
+                    data-groupnumber="@(s.GroupNumber?.ToLowerInvariant() ?? "")"
+                    data-detail-url="@Url.Action("Details", new { id = s.Id })">
                     <td>
                         <input type="checkbox" class="form-check-input row-check" value="@s.Id" data-name="@s.FullName" />
                     </td>
-                    <td><a asp-action="Details" asp-route-id="@s.Id">@s.FullName</a></td>
+                    <td>@s.FirstName</td>
+                    <td>@s.LastName</td>
                     <td>@(s.Email ?? "-")</td>
                     <td>@(s.CardNumber ?? "-")</td>
+                    <td>@(s.GroupNumber ?? "-")</td>
                     <td>@(s.Year.HasValue ? s.Year.Value.ToString() : "-")</td>
                     <td>
                         @if (s.IsActive) { <span class="badge bg-success">Aktívny</span> }
                         else { <span class="badge bg-secondary">Neaktívny</span> }
                     </td>
                     <td>@s.AbsenceCount</td>
-                    <td>@(s.AvgScore.HasValue ? s.AvgScore.Value.ToString("F1") : "-")</td>
+                    <td>@(s.TotalScore.HasValue ? s.TotalScore.Value.ToString("F1") : "-")</td>
                     <td>
                         <div class="btn-group btn-group-sm">
+                            <a asp-action="Details" asp-route-id="@s.Id" class="btn btn-sm btn-icon btn-outline-secondary"
+                               data-bs-toggle="tooltip" title="Detail">
+                                <i class="bi bi-eye"></i>
+                            </a>
                             <a asp-action="Edit" asp-route-id="@s.Id" class="btn btn-sm btn-icon btn-outline-primary"
                                data-bs-toggle="tooltip" title="Upraviť">
                                 <i class="bi bi-pencil"></i>

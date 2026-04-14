@@ -72,7 +72,16 @@ public class StudentsController : Controller
             return View(vm);
         }
 
-        var student = await _studentService.CreateStudentAsync(vm.FirstName, vm.LastName, vm.Email, vm.CardNumber, vm.Year, vm.GroupId);
+        if (await _studentService.IsCardNumberTakenAsync(vm.CardNumber!))
+        {
+            ModelState.AddModelError(nameof(vm.CardNumber), "Číslo karty už existuje.");
+            await PopulateActiveGroupAsync();
+            var groupName = await _groupService.GetGroupNameAsync(vm.GroupId);
+            ViewBag.GroupName = groupName;
+            return View(vm);
+        }
+
+        var student = await _studentService.CreateStudentAsync(vm.FirstName, vm.LastName, vm.Email, vm.CardNumber, vm.Year, vm.GroupNumber, vm.GroupId);
 
         TempData["Success"] = $"Študent '{student.FullName}' bol úspešne pridaný.";
         return RedirectToAction(nameof(Index), new { groupId = vm.GroupId });
@@ -94,6 +103,7 @@ public class StudentsController : Controller
             Email = student.Email,
             CardNumber = student.CardNumber,
             Year = student.Year,
+            GroupNumber = student.GroupNumber,
             IsActive = student.IsActive,
             GroupId = student.GroupId
         });
@@ -110,7 +120,14 @@ public class StudentsController : Controller
             return View(vm);
         }
 
-        var student = await _studentService.UpdateStudentAsync(id, vm.FirstName, vm.LastName, vm.Email, vm.CardNumber, vm.Year, vm.IsActive);
+        if (await _studentService.IsCardNumberTakenAsync(vm.CardNumber!, excludeStudentId: id))
+        {
+            ModelState.AddModelError(nameof(vm.CardNumber), "Číslo karty už existuje.");
+            await PopulateActiveGroupAsync();
+            return View(vm);
+        }
+
+        var student = await _studentService.UpdateStudentAsync(id, vm.FirstName, vm.LastName, vm.Email, vm.CardNumber, vm.Year, vm.GroupNumber, vm.IsActive);
         if (student == null) return NotFound();
 
         TempData["Success"] = $"Študent '{student.FullName}' bol úspešne aktualizovaný.";
@@ -132,7 +149,7 @@ public class StudentsController : Controller
     {
         var deleted = await _studentService.DeleteStudentAsync(id);
         if (!deleted)
-            return Json(new { success = false, message = "Student not found." });
+            return Json(new { success = false, message = "Študent nebol nájdený." });
 
         return Json(new { success = true });
     }
@@ -141,7 +158,7 @@ public class StudentsController : Controller
     public async Task<IActionResult> BulkDelete([FromBody] int[]? studentIds)
     {
         if (studentIds == null || studentIds.Length == 0)
-            return Json(new { success = false, message = "No students selected." });
+            return Json(new { success = false, message = "Žiadni študenti neboli vybraní." });
 
         await _studentService.BulkDeleteStudentsAsync(studentIds.ToList());
         return Json(new { success = true });
@@ -161,7 +178,7 @@ public class StudentsController : Controller
     public async Task<IActionResult> BulkSetActive([FromBody] BulkSetActiveRequest? request)
     {
         if (request?.StudentIds == null || request.StudentIds.Length == 0)
-            return Json(new { success = false, message = "No students selected." });
+            return Json(new { success = false, message = "Žiadni študenti neboli vybraní." });
 
         await _studentService.BulkSetActiveAsync(request.StudentIds.ToList(), request.Active);
         return Json(new { success = true });
@@ -203,6 +220,7 @@ public class StudentsController : Controller
                     Email = r.Email,
                     CardNumber = r.CardNumber,
                     Year = r.Year,
+                    GroupNumber = r.GroupNumber,
                     Status = r.Status.ToString(),
                     ErrorMessage = r.ErrorMessage,
                     Selected = r.Status != ImportRowStatus.Error
@@ -229,6 +247,7 @@ public class StudentsController : Controller
                 vm.ImportEmail ? r.Email : null,
                 vm.ImportCardNumber ? r.CardNumber : null,
                 vm.ImportYear ? r.Year : null,
+                vm.ImportGroupNumber ? r.GroupNumber : null,
                 ImportRowStatus.Valid,
                 null))
             .ToList();

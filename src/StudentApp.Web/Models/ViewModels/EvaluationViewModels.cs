@@ -61,6 +61,8 @@ public class EvaluationEditVm
 public class EvaluationItemVm
 {
     public int Id { get; set; }
+    public int ActivityId { get; set; }
+    public string ActivityName { get; set; } = null!;
     public string TaskName { get; set; } = null!;
     public decimal Score { get; set; }
     public string? Comment { get; set; }

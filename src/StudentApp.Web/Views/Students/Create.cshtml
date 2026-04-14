@@ -25,14 +25,19 @@
                 <span asp-validation-for="Email" class="text-danger"></span>
             </div>
             <div class="mb-3">
-                <label asp-for="CardNumber" class="form-label">Číslo karty</label>
-                <input asp-for="CardNumber" class="form-control" maxlength="50" />
+                <label asp-for="CardNumber" class="form-label">Číslo karty *</label>
+                <input asp-for="CardNumber" class="form-control" required maxlength="50" />
                 <span asp-validation-for="CardNumber" class="text-danger"></span>
             </div>
             <div class="mb-3">
                 <label asp-for="Year" class="form-label">Ročník</label>
                 <input asp-for="Year" class="form-control" type="number" min="1" max="10" />
                 <span asp-validation-for="Year" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="GroupNumber" class="form-label">Krúžok</label>
+                <input asp-for="GroupNumber" class="form-control" maxlength="50" />
+                <span asp-validation-for="GroupNumber" class="text-danger"></span>
             </div>
             <button type="submit" class="btn btn-primary">Pridať študenta</button>
             <a asp-action="Index" asp-route-groupId="@Model.GroupId" class="btn btn-secondary">Zrušiť</a>

@@ -17,7 +17,7 @@ public class ActivitySummaryVm
 
 public class ActivityCreateVm
 {
-    [Required(ErrorMessage = "Activity name is required.")]
+    [Required(ErrorMessage = "Názov aktivity je povinný.")]
     [MaxLength(200)]
     public string Name { get; set; } = null!;
 
@@ -34,7 +34,7 @@ public class ActivityEditVm
 {
     public int Id { get; set; }
 
-    [Required(ErrorMessage = "Activity name is required.")]
+    [Required(ErrorMessage = "Názov aktivity je povinný.")]
     [MaxLength(200)]
     public string Name { get; set; } = null!;
 
@@ -77,7 +77,7 @@ public record TaskWithAssignmentVm(int TaskId, string Title, DateTime? Presentat
 
 public class TaskCreateVm
 {
-    [Required(ErrorMessage = "Task title is required.")]
+    [Required(ErrorMessage = "Názov položky je povinný.")]
     [MaxLength(300)]
     public string Title { get; set; } = null!;
     public int ActivityId { get; set; }

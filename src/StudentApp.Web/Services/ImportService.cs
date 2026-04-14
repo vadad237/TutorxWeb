@@ -24,13 +24,11 @@ public class ImportService : IImportService
         var group = await _db.Groups.FindAsync(groupId)
             ?? throw new InvalidOperationException("Group not found.");
 
-        var existingStudents = await _db.Students
-            .Where(s => s.GroupId == groupId)
-            .Select(s => new { s.FirstName, s.LastName })
-            .ToListAsync();
-
-        var existingSet = new HashSet<string>(
-            existingStudents.Select(s => $"{s.FirstName.Trim().ToLowerInvariant()}|{s.LastName.Trim().ToLowerInvariant()}")
+        var groupCardNumbers = new HashSet<string>(
+            await _db.Students
+                .Where(s => s.CardNumber != null && s.GroupId == groupId)
+                .Select(s => s.CardNumber!.Trim().ToLowerInvariant())
+                .ToListAsync()
         );
 
         List<ImportRowDto> rows;
@@ -38,11 +36,11 @@ public class ImportService : IImportService
 
         if (ext == ".csv")
         {
-            rows = ParseCsv(fileStream, existingSet);
+            rows = ParseCsv(fileStream, groupCardNumbers);
         }
         else if (ext == ".xlsx")
         {
-            rows = ParseXlsx(fileStream, existingSet);
+            rows = ParseXlsx(fileStream, groupCardNumbers);
         }
         else
         {
@@ -52,9 +50,10 @@ public class ImportService : IImportService
         return new ImportPreviewDto(rows, groupId, group.Name);
     }
 
-    private List<ImportRowDto> ParseCsv(Stream stream, HashSet<string> existingSet)
+    private List<ImportRowDto> ParseCsv(Stream stream, HashSet<string> groupCardNumbers)
     {
         var rows = new List<ImportRowDto>();
+        var seenCardNumbers = new HashSet<string>();
 
         using var reader = new StreamReader(stream, Encoding.UTF8);
         var content = reader.ReadToEnd();
@@ -82,10 +81,11 @@ public class ImportService : IImportService
         var emailIdx      = Array.FindIndex(headers, h => EmailAliases.Contains(h));
         var cardNumberIdx = Array.FindIndex(headers, h => CardNumberAliases.Contains(h));
         var yearIdx       = Array.FindIndex(headers, h => YearAliases.Contains(h));
+        var groupNumberIdx = Array.FindIndex(headers, h => GroupNumberAliases.Contains(h));
 
         if (firstNameIdx == -1 || lastNameIdx == -1)
         {
-            rows.Add(new ImportRowDto("", "", null, null, null, ImportRowStatus.Error, "Missing required columns: Name/FirstName/Meno and Surname/LastName/Priezvisko"));
+            rows.Add(new ImportRowDto("", "", null, null, null, null, ImportRowStatus.Error, "Missing required columns: Name/FirstName/Meno and Surname/LastName/Priezvisko"));
             return rows;
         }
 
@@ -98,31 +98,40 @@ public class ImportService : IImportService
             int? year = null;
             if (yearIdx >= 0 && int.TryParse(csv.GetField(yearIdx)?.Trim(), out var parsedYear))
                 year = parsedYear;
+            var groupNumber = groupNumberIdx >= 0 ? csv.GetField(groupNumberIdx)?.Trim() : null;
+            if (string.IsNullOrWhiteSpace(groupNumber)) groupNumber = null;
 
             if (string.IsNullOrWhiteSpace(firstName) && string.IsNullOrWhiteSpace(lastName))
                 continue; // Skip empty rows
 
             if (string.IsNullOrWhiteSpace(firstName))
             {
-                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, ImportRowStatus.Error, "Missing FirstName"));
+                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, groupNumber, ImportRowStatus.Error, "Missing FirstName"));
                 continue;
             }
 
             if (string.IsNullOrWhiteSpace(lastName))
             {
-                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, ImportRowStatus.Error, "Missing LastName"));
+                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, groupNumber, ImportRowStatus.Error, "Missing LastName"));
                 continue;
             }
 
-            var key = $"{firstName.ToLowerInvariant()}|{lastName.ToLowerInvariant()}";
-            if (existingSet.Contains(key))
+            if (!string.IsNullOrWhiteSpace(cardNumber))
             {
-                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, ImportRowStatus.Duplicate, "Student already exists in group"));
+                var cardKey = cardNumber.ToLowerInvariant();
+                if (groupCardNumbers.Contains(cardKey))
+                {
+                    rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, groupNumber, ImportRowStatus.Error, $"Číslo karty '{cardNumber}' už bolo importované do tejto skupiny"));
+                    continue;
+                }
+                if (!seenCardNumbers.Add(cardKey))
+                {
+                    rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, groupNumber, ImportRowStatus.Error, $"Číslo karty '{cardNumber}' sa v súbore opakuje"));
+                    continue;
+                }
             }
-            else
-            {
-                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, ImportRowStatus.Valid, null));
-            }
+
+            rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, groupNumber, ImportRowStatus.Valid, null));
         }
 
         return rows;
@@ -152,15 +161,17 @@ public class ImportService : IImportService
     private static readonly string[] EmailAliases       = ["email", "e-mail", "e mail"];
     private static readonly string[] CardNumberAliases  = ["cardnumber", "card", "karta", "card number", "cardno", "číslo karty", "cislo karty", "číslokarty"];
     private static readonly string[] YearAliases        = ["year", "rocnik", "ročník", "rocník", "yr", "ročnik"];
+    private static readonly string[] GroupNumberAliases = ["krúžok", "kruzok", "groupnumber", "group number", "group no", "krúžoknumber"];
 
     private static bool IsKnownHeader(string h) =>
         FirstNameAliases.Contains(h) || LastNameAliases.Contains(h) ||
         EmailAliases.Contains(h)     || CardNumberAliases.Contains(h) ||
-        YearAliases.Contains(h);
+        YearAliases.Contains(h)      || GroupNumberAliases.Contains(h);
 
-    private List<ImportRowDto> ParseXlsx(Stream stream, HashSet<string> existingSet)
+    private List<ImportRowDto> ParseXlsx(Stream stream, HashSet<string> groupCardNumbers)
     {
         var rows = new List<ImportRowDto>();
+        var seenCardNumbers = new HashSet<string>();
 
         using var workbook = new XLWorkbook(stream);
         var worksheet = workbook.Worksheets.First();
@@ -191,7 +202,7 @@ public class ImportService : IImportService
 
         if (headerRowNum == -1)
         {
-            rows.Add(new ImportRowDto("", "", null, null, null, ImportRowStatus.Error, "Could not find a header row with recognised column names (expected Meno/Name, Priezvisko/Surname, etc.)"));
+            rows.Add(new ImportRowDto("", "", null, null, null, null, ImportRowStatus.Error, "Could not find a header row with recognised column names (expected Meno/Name, Priezvisko/Surname, etc.)"));
             return rows;
         }
 
@@ -200,10 +211,11 @@ public class ImportService : IImportService
         int emailCol      = GetCol(headers, EmailAliases);
         int cardNumberCol = GetCol(headers, CardNumberAliases);
         int yearCol       = GetCol(headers, YearAliases);
+        int groupNumberCol = GetCol(headers, GroupNumberAliases);
 
         if (firstNameCol == -1 || lastNameCol == -1)
         {
-            rows.Add(new ImportRowDto("", "", null, null, null, ImportRowStatus.Error, "Missing required columns: Name/FirstName/Meno and Surname/LastName/Priezvisko"));
+            rows.Add(new ImportRowDto("", "", null, null, null, null, ImportRowStatus.Error, "Missing required columns: Name/FirstName/Meno and Surname/LastName/Priezvisko"));
             return rows;
         }
 
@@ -216,31 +228,39 @@ public class ImportService : IImportService
             int? year = null;
             if (yearCol > 0 && int.TryParse(GetCellString(worksheet.Cell(row, yearCol)), out var parsedYear))
                 year = parsedYear;
+            var groupNumber = groupNumberCol > 0 ? NullIfEmpty(GetCellString(worksheet.Cell(row, groupNumberCol))) : null;
 
             if (string.IsNullOrWhiteSpace(firstName) && string.IsNullOrWhiteSpace(lastName))
                 continue;
 
             if (string.IsNullOrWhiteSpace(firstName))
             {
-                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, ImportRowStatus.Error, "Missing FirstName"));
+                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, groupNumber, ImportRowStatus.Error, "Missing FirstName"));
                 continue;
             }
 
             if (string.IsNullOrWhiteSpace(lastName))
             {
-                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, ImportRowStatus.Error, "Missing LastName"));
+                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, groupNumber, ImportRowStatus.Error, "Missing LastName"));
                 continue;
             }
 
-            var key = $"{firstName.ToLowerInvariant()}|{lastName.ToLowerInvariant()}";
-            if (existingSet.Contains(key))
+            if (!string.IsNullOrWhiteSpace(cardNumber))
             {
-                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, ImportRowStatus.Duplicate, "Student already exists in group"));
+                var cardKey = cardNumber.ToLowerInvariant();
+                if (groupCardNumbers.Contains(cardKey))
+                {
+                    rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, groupNumber, ImportRowStatus.Error, $"Číslo karty '{cardNumber}' už bolo importované do tejto skupiny"));
+                    continue;
+                }
+                if (!seenCardNumbers.Add(cardKey))
+                {
+                    rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, groupNumber, ImportRowStatus.Error, $"Číslo karty '{cardNumber}' sa v súbore opakuje"));
+                    continue;
+                }
             }
-            else
-            {
-                rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, ImportRowStatus.Valid, null));
-            }
+
+            rows.Add(new ImportRowDto(firstName, lastName, email, cardNumber, year, groupNumber, ImportRowStatus.Valid, null));
         }
 
         return rows;
@@ -258,6 +278,7 @@ public class ImportService : IImportService
                 Email = string.IsNullOrWhiteSpace(row.Email) ? null : row.Email.Trim(),
                 CardNumber = string.IsNullOrWhiteSpace(row.CardNumber) ? null : row.CardNumber.Trim(),
                 Year = row.Year,
+                GroupNumber = string.IsNullOrWhiteSpace(row.GroupNumber) ? null : row.GroupNumber.Trim(),
                 GroupId = groupId,
                 IsActive = true
             });

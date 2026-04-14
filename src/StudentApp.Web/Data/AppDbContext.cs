@@ -28,6 +28,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         // Group - unique name
         builder.Entity<Group>().HasIndex(g => g.Name).IsUnique();
 
+        // Student - card number is not globally unique (same card can appear in different groups)
+        builder.Entity<Student>().HasIndex(s => s.CardNumber)
+            .HasFilter("[CardNumber] IS NOT NULL");
+
         // Attendance unique constraint
         builder.Entity<Attendance>()
             .HasIndex(a => new { a.StudentId, a.GroupId, a.Date }).IsUnique();

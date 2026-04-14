@@ -835,33 +835,36 @@ var updateToolbar;
     function normalize(str) {
         return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     }
-    var searchInput  = document.getElementById('studentSearch');
-    var statusFilter = document.getElementById('statusFilter');
-    var yearFilter   = document.getElementById('yearFilter');
-    var clearBtn     = document.getElementById('clearFilters');
-    var filterCount  = document.getElementById('filterCount');
-    var noResults    = document.getElementById('noResultsMsg');
+    var searchInput       = document.getElementById('studentSearch');
+    var statusFilter      = document.getElementById('statusFilter');
+    var yearFilter        = document.getElementById('yearFilter');
+    var groupNumberFilter = document.getElementById('groupNumberFilter');
+    var clearBtn          = document.getElementById('clearFilters');
+    var filterCount       = document.getElementById('filterCount');
+    var noResults         = document.getElementById('noResultsMsg');
     if (!searchInput || !statusFilter) return;
 
     var allRows = Array.from(document.querySelectorAll('tbody tr'));
 
     function applyFilters() {
-        var q      = normalize(searchInput.value.trim());
-        var status = statusFilter.value;
-        var year   = yearFilter.value;
+        var q           = normalize(searchInput.value.trim());
+        var status      = statusFilter.value;
+        var year        = yearFilter.value;
+        var groupNumber = groupNumberFilter ? normalize(groupNumberFilter.value) : '';
         var visible = 0;
         allRows.forEach(function (row) {
             var matchSearch = !q ||
                 normalize(row.dataset.name).includes(q) ||
                 normalize(row.dataset.email).includes(q) ||
                 normalize(row.dataset.card).includes(q);
-            var matchStatus = !status || row.dataset.active === status;
-            var matchYear   = !year   || row.dataset.year  === year;
-            var show = matchSearch && matchStatus && matchYear;
+            var matchStatus      = !status      || row.dataset.active       === status;
+            var matchYear        = !year        || row.dataset.year         === year;
+            var matchGroupNumber = !groupNumber || normalize(row.dataset.groupnumber) === groupNumber;
+            var show = matchSearch && matchStatus && matchYear && matchGroupNumber;
             row.style.display = show ? '' : 'none';
             if (show) visible++;
         });
-        var hasFilter = q || status || year;
+        var hasFilter = q || status || year || groupNumber;
         clearBtn.classList.toggle('d-none', !hasFilter);
         noResults.classList.toggle('d-none', visible > 0 || allRows.length === 0);
         filterCount.textContent = hasFilter ? visible + ' z ' + allRows.length + ' študentov' : '';
@@ -872,12 +875,14 @@ var updateToolbar;
         searchInput.value = '';
         statusFilter.value = '';
         yearFilter.value = '';
+        if (groupNumberFilter) groupNumberFilter.value = '';
         applyFilters();
     }
 
     searchInput.addEventListener('input',   applyFilters);
     statusFilter.addEventListener('change', applyFilters);
     yearFilter.addEventListener('change',   applyFilters);
+    if (groupNumberFilter) groupNumberFilter.addEventListener('change', applyFilters);
     clearBtn.addEventListener('click',      clearAll);
 })();
 
@@ -1014,10 +1019,112 @@ var updateToolbar;
             modal.show();
         });
     });
+
+    document.querySelectorAll('tr[data-detail-url]').forEach(function (row) {
+        row.addEventListener('dblclick', function (e) {
+            if (e.target.closest('button, a, input, form')) return;
+            window.location.href = row.dataset.detailUrl;
+        });
+    });
+
+    var studentsTable = document.getElementById('studentsTable');
+    if (studentsTable) {
+        var studentsTbody = studentsTable.querySelector('tbody');
+        var sortColIdx = -1;
+        var sortAsc = true;
+
+        studentsTable.querySelectorAll('thead th[data-sort]').forEach(function (th) {
+            th.addEventListener('click', function () {
+                var colIdx = Array.from(th.closest('tr').children).indexOf(th);
+                var isNum  = th.dataset.sort === 'num';
+
+                if (sortColIdx === colIdx) {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortColIdx = colIdx;
+                    sortAsc = true;
+                }
+
+                studentsTable.querySelectorAll('thead th[data-sort]').forEach(function (h) {
+                    h.classList.remove('sort-asc', 'sort-desc');
+                });
+                th.classList.add(sortAsc ? 'sort-asc' : 'sort-desc');
+
+                var rows = Array.from(studentsTbody.querySelectorAll('tr'));
+                rows.sort(function (a, b) {
+                    var aVal = a.cells[colIdx] ? a.cells[colIdx].textContent.trim() : '';
+                    var bVal = b.cells[colIdx] ? b.cells[colIdx].textContent.trim() : '';
+                    if (isNum) {
+                        var aNum = parseFloat(aVal.replace(',', '.')) || 0;
+                        var bNum = parseFloat(bVal.replace(',', '.')) || 0;
+                        return sortAsc ? aNum - bNum : bNum - aNum;
+                    }
+                    return sortAsc
+                        ? aVal.localeCompare(bVal, 'sk')
+                        : bVal.localeCompare(aVal, 'sk');
+                });
+                rows.forEach(function (row) { studentsTbody.appendChild(row); });
+            });
+        });
+    }
 })();
 
 // ── Students/ImportPreview.cshtml ─────────────────────────────────────────
 (function () {
+    // Column visibility toggles
+    function applyCardErrVisibility(cardColVisible) {
+        var badge = document.getElementById('cardErrBadge');
+        if (badge) badge.style.display = cardColVisible ? '' : 'none';
+        document.querySelectorAll('tr[data-card-err]').forEach(function (row) {
+            var firstCell   = row.cells[0];
+            var statusCell  = row.querySelector('td:nth-last-child(2)');
+            var noteCell    = row.querySelector('td:last-child');
+            var statusInput = row.querySelector('input[name$=".Status"]');
+
+            if (cardColVisible) {
+                // Revert to original error state
+                row.classList.add('table-danger');
+                if (statusCell) statusCell.style.visibility = '';
+                if (noteCell)   noteCell.style.visibility   = '';
+                if (statusInput) statusInput.value = 'Error';
+                // Remove checkbox added by us, restore the dash
+                var addedCb  = firstCell.querySelector('.card-err-cb');
+                var addedHid = firstCell.querySelector('.card-err-hid');
+                var existingDash = firstCell.querySelector('.text-danger');
+                if (addedCb)  addedCb.remove();
+                if (addedHid) addedHid.remove();
+                if (existingDash) existingDash.style.display = '';
+            } else {
+                // Card column not imported — treat row as valid and unlock it
+                row.classList.remove('table-danger');
+                if (statusCell) statusCell.style.visibility = 'hidden';
+                if (noteCell)   noteCell.style.visibility   = 'hidden';
+                if (statusInput) statusInput.value = 'Valid';
+
+                // Hide the dash and inject a pre-checked checkbox
+                var existingDash = firstCell.querySelector('.text-danger');
+                if (existingDash) existingDash.style.display = 'none';
+
+                if (!firstCell.querySelector('.card-err-cb')) {
+                    var cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.className = 'form-check-input card-err-cb';
+                    cb.value = 'true';
+                    cb.name = statusInput.name.replace('.Status', '.Selected');
+                    cb.checked = true;
+                    firstCell.insertBefore(cb, firstCell.firstChild);
+
+                    var hid = document.createElement('input');
+                    hid.type = 'hidden';
+                    hid.className = 'card-err-hid';
+                    hid.name = cb.name;
+                    hid.value = 'false';
+                    firstCell.insertBefore(hid, cb.nextSibling);
+                }
+            }
+        });
+    }
+
     document.querySelectorAll('.col-toggle').forEach(function (cb) {
         cb.addEventListener('change', function () {
             var col = this.dataset.col;
@@ -1025,6 +1132,51 @@ var updateToolbar;
             document.querySelectorAll('.' + col).forEach(function (el) {
                 el.style.display = visible ? '' : 'none';
             });
+            if (col === 'col-cardnumber') {
+                applyCardErrVisibility(visible);
+            }
+        });
+    });
+
+    // Column sorting
+    var importTable = document.getElementById('importPreviewTable');
+    if (!importTable) return;
+
+    var tbody = importTable.querySelector('tbody');
+    var sortColIdx = -1;
+    var sortAsc = true;
+
+    importTable.querySelectorAll('thead th[data-sort]').forEach(function (th) {
+        th.addEventListener('click', function () {
+            var colIdx = Array.from(th.closest('tr').children).indexOf(th);
+            var isNum  = th.dataset.sort === 'num';
+
+            if (sortColIdx === colIdx) {
+                sortAsc = !sortAsc;
+            } else {
+                sortColIdx = colIdx;
+                sortAsc = true;
+            }
+
+            importTable.querySelectorAll('thead th[data-sort]').forEach(function (h) {
+                h.classList.remove('sort-asc', 'sort-desc');
+            });
+            th.classList.add(sortAsc ? 'sort-asc' : 'sort-desc');
+
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort(function (a, b) {
+                var aVal = a.cells[colIdx] ? a.cells[colIdx].textContent.trim() : '';
+                var bVal = b.cells[colIdx] ? b.cells[colIdx].textContent.trim() : '';
+                if (isNum) {
+                    var aNum = parseFloat(aVal) || 0;
+                    var bNum = parseFloat(bVal) || 0;
+                    return sortAsc ? aNum - bNum : bNum - aNum;
+                }
+                return sortAsc
+                    ? aVal.localeCompare(bVal, 'sk')
+                    : bVal.localeCompare(aVal, 'sk');
+            });
+            rows.forEach(function (row) { tbody.appendChild(row); });
         });
     });
 })();

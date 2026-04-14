@@ -61,7 +61,7 @@ public class TasksController : Controller
     {
         var (found, activityId) = await _taskService.DeleteTaskAsync(id);
         if (!found)
-            return Json(new { success = false, message = "Task not found." });
+            return Json(new { success = false, message = "Položka nebola nájdená." });
 
         return Json(new { success = true, activityId });
     }

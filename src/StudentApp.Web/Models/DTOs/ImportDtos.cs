@@ -1,6 +1,6 @@
 namespace StudentApp.Web.Models.DTOs;
 
-public enum ImportRowStatus { Valid, Duplicate, Error }
+public enum ImportRowStatus { Valid, Error }
 
 public record ImportRowDto(
     string FirstName,
@@ -8,6 +8,7 @@ public record ImportRowDto(
     string? Email,
     string? CardNumber,
     int? Year,
+    string? GroupNumber,
     ImportRowStatus Status,
     string? ErrorMessage
 );
