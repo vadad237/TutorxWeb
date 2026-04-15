@@ -41,16 +41,13 @@
             <input type="search" id="studentSearch" class="form-control"
                    placeholder="Hľadať študenta…" autocomplete="off" />
         </div>
-        @if (groupNumbers.Any())
-        {
-            <select id="groupNumberFilter" class="form-select form-select-sm" style="max-width:200px;">
-                <option value="">Všetky krúžky</option>
-                @foreach (var g in groupNumbers)
-                {
-                    <option value="@g">@g</option>
-                }
-            </select>
-        }
+        <select id="groupNumberFilter" class="form-select form-select-sm" style="max-width:200px;">
+            <option value="">Všetky krúžky</option>
+            @foreach (var g in groupNumbers)
+            {
+                <option value="@g">@g</option>
+            }
+        </select>
     </div>
 
     <table class="table table-striped" id="attendanceTable">
