@@ -66,7 +66,8 @@ public class CustomExportController : Controller
         request.GroupId = activeGroupId.Value;
 
         if (!request.IncludeStudents && !request.IncludeAttendance &&
-            !request.IncludeActivities && !request.IncludeTasks && !request.IncludePresentations)
+            !request.IncludeActivities && !request.IncludeTasks && !request.IncludePresentations &&
+            !request.IncludeOtherAttributes)
         {
             TempData["Error"] = "Vyberte aspoň jednu sekciu na export.";
             return RedirectToAction(nameof(Index));

@@ -104,7 +104,7 @@ public class ActivityService : IActivityService
             Tasks = activity.Tasks
                 .Where(t => !t.IsPresentation && !t.IsNumberedTask)
                 .OrderByDescending(t => t.CreatedAt)
-                .Select(t => new SimpleTaskVm(t.Id, t.Title, t.CreatedAt))
+                .Select(t => new SimpleTaskVm(t.Id, t.Title, t.CreatedAt, t.MaxScore))
                 .ToList(),
             NumberedTasks = activity.Tasks
                 .Where(t => t.IsNumberedTask)
@@ -135,7 +135,8 @@ public class ActivityService : IActivityService
                         .Where(ps => ps.Role == PresentationRole.Substitution)
                         .Select(ps => new PresentationStudentVm(ps.StudentId, ps.Student.FirstName + " " + ps.Student.LastName))
                         .OrderBy(ps => ps.FullName)
-                        .ToList()
+                        .ToList(),
+                    t.MaxScore
                 )).ToList(),
             AssignedStudents = activity.Assignments.Select(a => new AssignedStudentVm(
                 a.Id,

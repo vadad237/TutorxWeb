@@ -38,7 +38,8 @@
     <table class="table table-striped" id="attendanceTable">
         <thead class="table-dark">
             <tr>
-                <th>Študent</th>
+                <th data-sort="text">Priezvisko<span class="sort-icon"></span></th>
+                <th data-sort="text">Meno<span class="sort-icon"></span></th>
                 <th>Prítomný</th>
                 <th>Neprítomný</th>
                 <th>Ospravedlnený</th>
@@ -52,8 +53,9 @@
                     <td>
                         <input type="hidden" name="Rows[@i].StudentId" value="@row.StudentId" />
                         <input type="hidden" name="Rows[@i].FullName" value="@row.FullName" />
-                        @row.FullName
+                        @row.LastName
                     </td>
+                    <td>@row.FirstName</td>
                     <td>
                         <input type="radio" name="Rows[@i].Status" value="Present"
                                class="form-check-input" @(row.Status == AttendanceStatus.Present || row.Status == null ? "checked" : "") />

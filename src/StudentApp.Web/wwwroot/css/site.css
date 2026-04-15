@@ -245,12 +245,16 @@ td .btn-group-sm > form > .btn {
 
 /* ── CustomExport/Index.cshtml ──────────────────────────────────────────── */
 .export-card { cursor: pointer; display: block; }
-.section-card {
+.section-card,
+.att-section-card,
+.eval-section-card {
     transition: border-color .15s, box-shadow .15s;
     border-color: #dee2e6 !important;
     cursor: pointer;
 }
-.section-card.active {
+.section-card.active,
+.att-section-card.active,
+.eval-section-card.active {
     border-color: #0d6efd !important;
     box-shadow: 0 0 0 3px rgba(13,110,253,.12);
 }

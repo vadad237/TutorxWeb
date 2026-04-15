@@ -13,7 +13,7 @@ public class TaskService : ITaskService
         _db = db;
     }
 
-    public async Task<TaskItem> CreateTaskAsync(string title, int activityId, DateTime? presentationDate, bool isPresentation)
+    public async Task<TaskItem> CreateTaskAsync(string title, int activityId, DateTime? presentationDate, bool isPresentation, decimal? maxScore = null)
     {
         var task = new TaskItem
         {
@@ -21,6 +21,7 @@ public class TaskService : ITaskService
             ActivityId = activityId,
             PresentationDate = presentationDate,
             IsPresentation = isPresentation,
+            MaxScore = maxScore,
             CreatedAt = DateTime.UtcNow
         };
         _db.TaskItems.Add(task);
@@ -75,6 +76,16 @@ public class TaskService : ITaskService
         if (task == null) return (false, "Task not found.");
 
         task.PresentationDate = presentationDate;
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    public async Task<(bool Success, string? Message)> SetMaxScoreAsync(int id, decimal? maxScore)
+    {
+        var task = await _db.TaskItems.FindAsync(id);
+        if (task == null) return (false, "Task not found.");
+
+        task.MaxScore = maxScore.HasValue ? Math.Round(maxScore.Value, 2) : null;
         await _db.SaveChangesAsync();
         return (true, null);
     }

@@ -102,6 +102,8 @@ public class AttendanceService : IAttendanceService
             Rows = activeStudents.Select(s => new StudentAttendanceRowVm
             {
                 StudentId = s.Id,
+                FirstName = s.FirstName,
+                LastName = s.LastName,
                 FullName = s.FullName,
                 Status = existingMap.TryGetValue(s.Id, out var status) ? status : null
             }).ToList()

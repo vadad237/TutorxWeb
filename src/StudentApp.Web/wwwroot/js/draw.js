@@ -70,11 +70,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         var preselectedName = '';
+        var preselectedActId = null;
         if (preselectedId) {
             var found = items.find(function (item) {
                 return String(item.Id) === String(preselectedId);
             });
-            if (found) preselectedName = isPresentation ? found.Title : found.Name;
+            if (found) {
+                preselectedName = isPresentation ? found.Title : found.Name;
+                preselectedActId = isPresentation ? found.ActivityId : found.Id;
+            }
         }
 
         var wrapper = document.createElement('div');
@@ -94,6 +98,10 @@ document.addEventListener('DOMContentLoaded', function () {
           +     '<div>'
           +       '<label class="form-label small fw-semibold mb-1">' + labelText + '</label>'
           +       '<select class="form-select form-select-sm card-item-select">' + opts + '</select>'
+          +       '<a class="card-detail-link text-decoration-none small mt-1" target="_blank" style="display:none">'
+          +         '<i class="bi bi-box-arrow-up-right me-1"></i>'
+          +         '<span class="card-detail-link-text"></span>'
+          +       '</a>'
           +     '</div>'
 
           // Role selector (presentations only)
@@ -174,7 +182,28 @@ document.addEventListener('DOMContentLoaded', function () {
         var eligibleBadge    = wrapper.querySelector('.card-eligible-badge');
         var includeAssignedCb = wrapper.querySelector('.card-include-assigned');
         var roleSelect        = wrapper.querySelector('.card-role-select'); // null for activity cards
+        var detailLink       = wrapper.querySelector('.card-detail-link');
+        var detailLinkText   = wrapper.querySelector('.card-detail-link-text');
         var isCardDrawing    = false;
+
+        // ── Detail link updater ───────────────────────────────────────────────
+        function updateDetailLink(selectedValue) {
+            if (!selectedValue) {
+                detailLink.style.display = 'none';
+                detailLink.href = '';
+                detailLinkText.textContent = '';
+                return;
+            }
+            var found = items.find(function (item) {
+                return String(item.Id) === String(selectedValue);
+            });
+            if (!found) { detailLink.style.display = 'none'; return; }
+            var actId = isPresentation ? found.ActivityId : found.Id;
+            var label = isPresentation ? found.Title : found.Name;
+            detailLink.href = '/Activities/Details/' + actId;
+            detailLinkText.textContent = label;
+            detailLink.style.display = 'inline';
+        }
         var cardType         = type;
 
         // While typing: only clamp the upper bound so the field can be cleared/retyped freely
@@ -325,6 +354,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 loadEligible(parseInt(this.value, 10));
             }
+            updateDetailLink(this.value);
             wrapper._updateCardBtn();
             updateAllButtons();
         });
@@ -355,6 +385,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Auto-load eligible students if pre-selected
         if (preselectedId) {
             loadEligible(parseInt(preselectedId, 10));
+            updateDetailLink(preselectedId);
         }
 
         updateAllButtons();

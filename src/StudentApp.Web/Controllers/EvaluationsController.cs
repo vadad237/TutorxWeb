@@ -61,7 +61,8 @@ public class EvaluationsController : Controller
             StudentId = studentId,
             TaskItemId = taskItemId,
             StudentName = info.Value.StudentName,
-            TaskName = info.Value.TaskName
+            TaskName = info.Value.TaskName,
+            MaxScore = info.Value.MaxScore
         };
 
         return View(vm);
@@ -72,6 +73,13 @@ public class EvaluationsController : Controller
     {
         if (!ModelState.IsValid)
         {
+            await PopulateActiveGroupAsync();
+            return View(vm);
+        }
+
+        if (vm.MaxScore.HasValue && vm.Score > vm.MaxScore.Value)
+        {
+            ModelState.AddModelError(nameof(vm.Score), $"Skóre nesmie byť vyššie ako maximálne skóre ({vm.MaxScore.Value}).");
             await PopulateActiveGroupAsync();
             return View(vm);
         }
@@ -100,6 +108,13 @@ public class EvaluationsController : Controller
 
         if (!ModelState.IsValid)
         {
+            await PopulateActiveGroupAsync();
+            return View(vm);
+        }
+
+        if (vm.MaxScore.HasValue && vm.Score > vm.MaxScore.Value)
+        {
+            ModelState.AddModelError(nameof(vm.Score), $"Skóre nesmie byť vyššie ako maximálne skóre ({vm.MaxScore.Value}).");
             await PopulateActiveGroupAsync();
             return View(vm);
         }

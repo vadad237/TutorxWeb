@@ -88,7 +88,8 @@ public class EvaluationService : IEvaluationService
                 Title = t.Title,
                 ActivityId = t.ActivityId,
                 ActivityName = t.Activity.Name,
-                IsPresentation = t.IsPresentation
+                IsPresentation = t.IsPresentation,
+                MaxScore = t.MaxScore
             }).ToList(),
             Scores = scores,
             EvaluationIds = evalIds,
@@ -106,13 +107,13 @@ public class EvaluationService : IEvaluationService
         return existing?.Id;
     }
 
-    public async Task<(string StudentName, string TaskName)?> GetStudentAndTaskInfoAsync(int studentId, int taskItemId)
+    public async Task<(string StudentName, string TaskName, decimal? MaxScore)?> GetStudentAndTaskInfoAsync(int studentId, int taskItemId)
     {
         var student = await _db.Students.FindAsync(studentId);
         var task = await _db.TaskItems.Include(t => t.Activity).FirstOrDefaultAsync(t => t.Id == taskItemId);
         if (student == null || task == null) return null;
 
-        return (student.FullName, $"{task.Activity.Name} — {task.Title}");
+        return (student.FullName, $"{task.Activity.Name} — {task.Title}", task.MaxScore);
     }
 
     public async Task<Evaluation> CreateEvaluationAsync(int studentId, int taskItemId, decimal score, string? comment)
@@ -145,6 +146,7 @@ public class EvaluationService : IEvaluationService
             TaskItemId = evaluation.TaskItemId,
             StudentName = evaluation.Student.FullName,
             TaskName = $"{evaluation.TaskItem.Activity.Name} — {evaluation.TaskItem.Title}",
+            MaxScore = evaluation.TaskItem.MaxScore,
             Score = evaluation.Score,
             Comment = evaluation.Comment
         };

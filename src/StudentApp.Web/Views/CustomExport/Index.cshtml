@@ -87,13 +87,22 @@ else
                              style="background:#e9f7ef">
                             <i class="bi bi-calendar-check-fill fs-4" style="color:#1a5276"></i>
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <h6 class="mb-1 fw-semibold">Dochádzka</h6>
-                            <p class="text-muted small mb-2">Jeden stĺpec na dátum — P&nbsp;/&nbsp;N&nbsp;/&nbsp;O na študenta</p>
-                            <div class="d-flex flex-wrap gap-1">
-                                <span class="badge rounded-pill" style="background:#d5f5e3;color:#1a5276">P = Prítomný</span>
-                                <span class="badge rounded-pill" style="background:#fde8e8;color:#922b21">N = Neprítomný</span>
-                                <span class="badge rounded-pill" style="background:#fef9e7;color:#7d6608">O = Ospravedlnený</span>
+                            <p class="text-muted small mb-2">Záznamy dochádzky na študenta</p>
+                            <div class="d-flex flex-wrap gap-2 student-fields">
+                                <label class="student-field-label" onclick="event.stopPropagation()">
+                                    <input type="checkbox" name="IncludeAttendanceDetails" value="true"
+                                           class="student-field-cb" checked />
+                                    <input type="hidden" name="IncludeAttendanceDetails" value="false" />
+                                    <span class="badge rounded-pill student-field-badge" style="background:#e9f7ef;color:#1a5276">Detail</span>
+                                </label>
+                                <label class="student-field-label" onclick="event.stopPropagation()">
+                                    <input type="checkbox" name="IncludeAttendanceSummary" value="true"
+                                           class="student-field-cb" checked />
+                                    <input type="hidden" name="IncludeAttendanceSummary" value="false" />
+                                    <span class="badge rounded-pill student-field-badge" style="background:#e9f7ef;color:#1a5276">Súhrn</span>
+                                </label>
                             </div>
                         </div>
                         <i class="bi bi-circle ms-auto text-muted check-icon" style="font-size:1.2rem"></i>
@@ -140,12 +149,22 @@ else
                              style="background:#f4ecf7">
                             <i class="bi bi-list-task fs-4" style="color:#6c3483"></i>
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <h6 class="mb-1 fw-semibold">Úlohy a hodnotenia</h6>
-                            <p class="text-muted small mb-2">Jeden stĺpec na úlohu — skóre študenta alebo prázdne</p>
-                            <div class="d-flex flex-wrap gap-1">
-                                <span class="badge rounded-pill" style="background:#f4ecf7;color:#6c3483">Aktivita › Názov úlohy</span>
-                                <span class="badge rounded-pill" style="background:#f4ecf7;color:#6c3483">Skóre</span>
+                            <p class="text-muted small mb-2">Stĺpce hodnotení úloh za každú aktivitu</p>
+                            <div class="d-flex flex-wrap gap-2 student-fields">
+                                <label class="student-field-label" onclick="event.stopPropagation()">
+                                    <input type="checkbox" name="IncludeTasksDetails" value="true"
+                                           class="student-field-cb" checked />
+                                    <input type="hidden" name="IncludeTasksDetails" value="false" />
+                                    <span class="badge rounded-pill student-field-badge" style="background:#f4ecf7;color:#6c3483">Detail</span>
+                                </label>
+                                <label class="student-field-label" onclick="event.stopPropagation()">
+                                    <input type="checkbox" name="IncludeTasksSummary" value="true"
+                                           class="student-field-cb" checked />
+                                    <input type="hidden" name="IncludeTasksSummary" value="false" />
+                                    <span class="badge rounded-pill student-field-badge" style="background:#f4ecf7;color:#6c3483">Súhrn</span>
+                                </label>
                             </div>
                         </div>
                         <i class="bi bi-circle ms-auto text-muted check-icon" style="font-size:1.2rem"></i>

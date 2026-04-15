@@ -10,8 +10,12 @@ public class CustomExportRequestVm
     public bool IncludeStudentYear { get; set; } = true;
     public bool IncludeStudentEmail { get; set; } = true;
     public bool IncludeAttendance { get; set; }
+    public bool IncludeAttendanceDetails { get; set; } = true;
+    public bool IncludeAttendanceSummary { get; set; } = true;
     public bool IncludeActivities { get; set; }
     public bool IncludeTasks { get; set; }
+    public bool IncludeTasksDetails { get; set; } = true;
+    public bool IncludeTasksSummary { get; set; } = true;
     public bool IncludePresentations { get; set; }
     public bool IncludeOtherAttributes { get; set; }
     public string Format { get; set; } = "xlsx";

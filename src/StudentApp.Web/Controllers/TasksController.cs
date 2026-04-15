@@ -14,12 +14,12 @@ public class TasksController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(string title, int activityId, DateTime? presentationDate, bool isPresentation = false)
+    public async Task<IActionResult> Create(string title, int activityId, DateTime? presentationDate, bool isPresentation = false, decimal? maxScore = null)
     {
         if (string.IsNullOrWhiteSpace(title))
             return Json(new { success = false, message = "Title is required." });
 
-        var task = await _taskService.CreateTaskAsync(title, activityId, presentationDate, isPresentation);
+        var task = await _taskService.CreateTaskAsync(title, activityId, presentationDate, isPresentation, maxScore);
         return Json(new { success = true, taskId = task.Id, title = task.Title });
     }
 
@@ -49,6 +49,14 @@ public class TasksController : Controller
     public async Task<IActionResult> SetDate(int id, DateTime? presentationDate)
     {
         var (success, message) = await _taskService.SetDateAsync(id, presentationDate);
+        if (!success) return Json(new { success = false, message });
+        return Json(new { success = true });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SetMaxScore(int id, decimal? maxScore)
+    {
+        var (success, message) = await _taskService.SetMaxScoreAsync(id, maxScore);
         if (!success) return Json(new { success = false, message });
         return Json(new { success = true });
     }

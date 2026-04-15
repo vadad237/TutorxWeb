@@ -69,13 +69,14 @@ public record AttributeOptionVm(int OptionId, string Name, string Color);
 public record OtherAttributeVm(int AttributeId, string Name, List<AttributeOptionVm> Options);
 public record StudentAttributeValueVm(int StudentId, int AttributeId, int? OptionId, string? OptionName, string? OptionColor);
 
-public record SimpleTaskVm(int TaskId, string Title, DateTime CreatedAt);
+public record SimpleTaskVm(int TaskId, string Title, DateTime CreatedAt, decimal? MaxScore);
 public record NumberedTaskVm(int TaskId, int Number, List<PresentationStudentVm> AssignedStudents);
 
 public record PresentationStudentVm(int StudentId, string FullName);
 public record TaskWithAssignmentVm(int TaskId, string Title, DateTime? PresentationDate,
     List<PresentationStudentVm> PresenteeStudents,
-    List<PresentationStudentVm> SubstitutionStudents);
+    List<PresentationStudentVm> SubstitutionStudents,
+    decimal? MaxScore);
 
 public class TaskCreateVm
 {

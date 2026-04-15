@@ -186,6 +186,7 @@
         <h5>Pridať úlohu</h5>
         <div class="input-group">
             <input type="text" id="taskTitle" class="form-control" placeholder="Názov úlohy..." maxlength="300" />
+            <input type="number" id="taskMaxScore" class="form-control" placeholder="Max skóre" min="0" step="0.01" style="max-width:130px" />
             <button type="button" id="addTaskBtn" class="btn btn-primary" data-activity-id="@Model.Id">Pridať úlohu</button>
         </div>
     </div>
@@ -203,6 +204,7 @@ else
         <thead class="table-dark">
             <tr>
                 <th>Úloha</th>
+                <th style="width:130px">Max skóre</th>
                 <th style="width:100px">Akcie</th>
             </tr>
         </thead>
@@ -211,6 +213,12 @@ else
             {
                 <tr>
                     <td>@t.Title</td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm task-max-score-input"
+                               data-id="@t.TaskId"
+                               value="@(t.MaxScore.HasValue ? t.MaxScore.Value.ToString("0.##") : "")"
+                               min="0" step="0.01" style="max-width:110px" placeholder="—" />
+                    </td>
                     <td>
                         <button type="button" class="btn btn-sm btn-outline-danger btn-delete-task" data-id="@t.TaskId">
                             <i class="bi bi-trash"></i>
@@ -231,6 +239,7 @@ else
         <div class="input-group">
             <input type="text" id="presTitle" class="form-control" placeholder="Názov prezentácie..." maxlength="300" />
             <input type="date" id="presDate" class="form-control" style="max-width:180px" />
+            <input type="number" id="presMaxScore" class="form-control" placeholder="Max skóre" min="0" step="0.01" style="max-width:130px" />
             <button type="button" id="addPresBtn" class="btn btn-success" data-activity-id="@Model.Id">Pridať prezentáciu</button>
         </div>
     </div>
@@ -260,6 +269,7 @@ else
                 </th>
                 <th style="width:22%">Názov</th>
                 <th style="width:14%">Dátum</th>
+                <th style="width:130px">Max skóre</th>
                 <th>Prezentujúci</th>
                 <th>Náhradník</th>
                 <th style="width:90px">Akcie</th>
@@ -280,6 +290,12 @@ else
                     <input type="date" class="form-control form-control-sm pres-date-input"
                            data-id="@p.TaskId"
                            value="@(p.PresentationDate.HasValue ? p.PresentationDate.Value.ToString("yyyy-MM-dd") : "")" />
+                </td>
+                <td>
+                    <input type="number" class="form-control form-control-sm task-max-score-input"
+                           data-id="@p.TaskId"
+                           value="@(p.MaxScore.HasValue ? p.MaxScore.Value.ToString("0.##") : "")"
+                           min="0" step="0.01" style="max-width:110px" placeholder="—" />
                 </td>
                 <td>
                     <div class="d-flex align-items-center gap-2 flex-wrap">

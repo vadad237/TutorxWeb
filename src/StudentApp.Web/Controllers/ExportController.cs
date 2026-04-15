@@ -45,7 +45,7 @@ public class ExportController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Attendance(int groupId, DateOnly? from = null, DateOnly? to = null, string format = "xlsx")
+    public async Task<IActionResult> Attendance(int groupId, DateOnly? from = null, DateOnly? to = null, string format = "xlsx", string sections = "details")
     {
         byte[] data;
         string contentType;
@@ -54,7 +54,7 @@ public class ExportController : Controller
         switch (format.ToLower())
         {
             case "csv":
-                data = await _exportService.ExportAttendanceCsvAsync(groupId, from, to);
+                data = await _exportService.ExportAttendanceCsvAsync(groupId, from, to, sections);
                 contentType = "text/csv";
                 fileName = "attendance.csv";
                 break;
@@ -64,7 +64,7 @@ public class ExportController : Controller
                 fileName = "attendance.pdf";
                 break;
             default:
-                data = await _exportService.ExportAttendanceXlsxAsync(groupId, from, to);
+                data = await _exportService.ExportAttendanceXlsxAsync(groupId, from, to, sections);
                 contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
                 fileName = "attendance.xlsx";
                 break;
@@ -77,7 +77,7 @@ public class ExportController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Evaluations(int groupId, int? activityId = null, string format = "xlsx")
+    public async Task<IActionResult> Evaluations(int groupId, int? activityId = null, string format = "xlsx", string sections = "details")
     {
         byte[] data;
         string contentType;
@@ -86,7 +86,7 @@ public class ExportController : Controller
         switch (format.ToLower())
         {
             case "csv":
-                data = await _exportService.ExportEvaluationsCsvAsync(groupId, activityId);
+                data = await _exportService.ExportEvaluationsCsvAsync(groupId, activityId, sections);
                 contentType = "text/csv";
                 fileName = "evaluations.csv";
                 break;
@@ -96,7 +96,7 @@ public class ExportController : Controller
                 fileName = "evaluations.pdf";
                 break;
             default:
-                data = await _exportService.ExportEvaluationsXlsxAsync(groupId, activityId);
+                data = await _exportService.ExportEvaluationsXlsxAsync(groupId, activityId, sections);
                 contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
                 fileName = "evaluations.xlsx";
                 break;

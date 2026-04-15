@@ -9,6 +9,7 @@ public class TaskSummaryForEvalVm
     public int ActivityId { get; set; }
     public string ActivityName { get; set; } = null!;
     public bool IsPresentation { get; set; }
+    public decimal? MaxScore { get; set; }
 }
 
 public class EvaluationIndexVm
@@ -32,6 +33,7 @@ public class EvaluationCreateVm
 
     public string StudentName { get; set; } = null!;
     public string TaskName { get; set; } = null!;
+    public decimal? MaxScore { get; set; }
 
     [Required]
     public decimal Score { get; set; }
@@ -48,6 +50,7 @@ public class EvaluationEditVm
 
     public string StudentName { get; set; } = null!;
     public string TaskName { get; set; } = null!;
+    public decimal? MaxScore { get; set; }
 
     [Required]
     public decimal Score { get; set; }

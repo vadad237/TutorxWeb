@@ -13,6 +13,8 @@ public class AttendanceRecordVm
 public class StudentAttendanceRowVm
 {
     public int StudentId { get; set; }
+    public string FirstName { get; set; } = null!;
+    public string LastName { get; set; } = null!;
     public string FullName { get; set; } = null!;
     public AttendanceStatus? Status { get; set; }
 }

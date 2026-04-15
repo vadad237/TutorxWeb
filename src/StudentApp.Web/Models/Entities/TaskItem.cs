@@ -12,6 +12,7 @@ public class TaskItem
     public DateTime? PresentationDate { get; set; }
     public bool IsPresentation { get; set; } = false;
     public bool IsNumberedTask { get; set; } = false;
+    public decimal? MaxScore { get; set; }
     public int ActivityId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

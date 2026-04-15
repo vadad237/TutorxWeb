@@ -65,7 +65,15 @@ public class CustomExportService : ICustomExportService
                         }));
 
             foreach (var date in attendanceDates)
-                headers.Add((date.ToString("dd.MM.yyyy"), "attendance"));
+                if (request.IncludeAttendanceDetails)
+                    headers.Add((date.ToString("dd.MM.yyyy"), "attendance"));
+            if (request.IncludeAttendanceSummary)
+            {
+                headers.Add(("Prítomný",    "att-sum"));
+                headers.Add(("Neprítomný",  "att-sum"));
+                headers.Add(("Ospravedlnený", "att-sum"));
+                headers.Add(("Dochádzka %",  "att-sum"));
+            }
         }
 
         // --- Activities ---
@@ -93,14 +101,24 @@ public class CustomExportService : ICustomExportService
 
         // --- Tasks & Evaluations ---
         List<TaskItem> tasks = new();
+        List<TaskItem> taskPresentations = new();
         Dictionary<(int studentId, int taskId), Evaluation> evalMap = new();
         if (request.IncludeTasks)
         {
             tasks = await _db.TaskItems
                 .Include(t => t.Activity)
-                .Where(t => t.Activity.GroupId == request.GroupId
+                .Where(t => !t.IsPresentation
+                         && t.Activity.GroupId == request.GroupId
                          && !t.Activity.IsArchived)
                 .OrderBy(t => t.Activity.Name).ThenBy(t => t.Title)
+                .ToListAsync();
+
+            taskPresentations = await _db.TaskItems
+                .Include(t => t.Activity)
+                .Where(t => t.IsPresentation
+                         && t.Activity.GroupId == request.GroupId
+                         && !t.Activity.IsArchived)
+                .OrderBy(t => t.Activity.Name).ThenBy(t => t.PresentationDate).ThenBy(t => t.Title)
                 .ToListAsync();
 
             var evals = await _db.Evaluations
@@ -109,13 +127,43 @@ public class CustomExportService : ICustomExportService
 
             evalMap = evals.ToDictionary(e => (e.StudentId, e.TaskItemId));
 
-            // Emit task columns grouped by activity, then a Total column per activity
-            foreach (var actGroup in tasks.GroupBy(t => t.ActivityId))
+            // Collect all activity IDs present in either list
+            var allActivityIds = tasks.Select(t => t.ActivityId)
+                .Union(taskPresentations.Select(t => t.ActivityId))
+                .Distinct()
+                .OrderBy(id => tasks.FirstOrDefault(t => t.ActivityId == id)?.Activity.Name
+                             ?? taskPresentations.First(t => t.ActivityId == id).Activity.Name)
+                .ToList();
+
+            foreach (var actId in allActivityIds)
             {
-                var actName = actGroup.First().Activity.Name;
-                foreach (var t in actGroup)
-                    headers.Add(($"{actName} › {t.Title}", "tasks"));
-                headers.Add(($"{actName} › Celkom", "tasks-sum"));
+                var actName = tasks.FirstOrDefault(t => t.ActivityId == actId)?.Activity.Name
+                           ?? taskPresentations.First(t => t.ActivityId == actId).Activity.Name;
+
+                if (request.IncludeTasksDetails)
+                {
+                    foreach (var t in tasks.Where(t => t.ActivityId == actId))
+                    {
+                        var maxSuffix = t.MaxScore.HasValue ? $" (max: {t.MaxScore.Value.ToString("0.##")})" : "";
+                        headers.Add(($"{actName} › {t.Title}{maxSuffix}", "tasks"));
+                    }
+                    foreach (var p in taskPresentations.Where(t => t.ActivityId == actId))
+                    {
+                        var dateStr = p.PresentationDate.HasValue
+                            ? p.PresentationDate.Value.ToString("dd.MM.yyyy")
+                            : "bez dátumu";
+                        var maxSuffix = p.MaxScore.HasValue ? $" (max: {p.MaxScore.Value.ToString("0.##")})" : "";
+                        headers.Add(($"{actName} › {p.Title} ({dateStr}){maxSuffix}", "tasks-pres"));
+                    }
+                }
+                if (request.IncludeTasksSummary)
+                {
+                    headers.Add(($"{actName} › Celkom", "tasks-sum"));
+                }
+            }
+            if (request.IncludeTasksSummary)
+            {
+                headers.Add(("Celkom (všetky aktivity)", "tasks-total"));
             }
         }
 
@@ -195,8 +243,21 @@ public class CustomExportService : ICustomExportService
             if (request.IncludeAttendance)
             {
                 var studentAtt = attendanceDateMap.GetValueOrDefault(student.Id) ?? [];
-                foreach (var date in attendanceDates)
-                    row.Add(studentAtt.GetValueOrDefault(date, ""));
+                if (request.IncludeAttendanceDetails)
+                    foreach (var date in attendanceDates)
+                        row.Add(studentAtt.GetValueOrDefault(date, ""));
+                if (request.IncludeAttendanceSummary)
+                {
+                    var present = attendanceDates.Count(d => studentAtt.GetValueOrDefault(d) == "P");
+                    var absent  = attendanceDates.Count(d => studentAtt.GetValueOrDefault(d) == "N");
+                    var excused = attendanceDates.Count(d => studentAtt.GetValueOrDefault(d) == "O");
+                    var total   = present + absent + excused;
+                    var pct     = total > 0 ? Math.Round((double)present / total * 100, 1) : 0.0;
+                    row.Add(present.ToString());
+                    row.Add(absent.ToString());
+                    row.Add(excused.ToString());
+                    row.Add(pct.ToString("F1") + "%");
+                }
             }
 
             if (request.IncludeActivities)
@@ -207,26 +268,69 @@ public class CustomExportService : ICustomExportService
 
             if (request.IncludeTasks)
             {
-                foreach (var actGroup in tasks.GroupBy(t => t.ActivityId))
+                decimal grandTotal = 0;
+                bool hasGrandAny = false;
+
+                var allActivityIds = tasks.Select(t => t.ActivityId)
+                    .Union(taskPresentations.Select(t => t.ActivityId))
+                    .Distinct()
+                    .OrderBy(id => tasks.FirstOrDefault(t => t.ActivityId == id)?.Activity.Name
+                                 ?? taskPresentations.First(t => t.ActivityId == id).Activity.Name)
+                    .ToList();
+
+                foreach (var actId in allActivityIds)
                 {
                     decimal actSum = 0;
                     bool hasAny = false;
-                    foreach (var task in actGroup)
+
+                    if (request.IncludeTasksDetails)
                     {
-                        if (evalMap.TryGetValue((student.Id, task.Id), out var eval))
+                        foreach (var task in tasks.Where(t => t.ActivityId == actId))
                         {
-                            row.Add(eval.Score.ToString("F2"));
-                            actSum += eval.Score;
-                            hasAny = true;
+                            if (evalMap.TryGetValue((student.Id, task.Id), out var eval))
+                            {
+                                row.Add(eval.Score.ToString("F2"));
+                                actSum += eval.Score;
+                                hasAny = true;
+                            }
+                            else
+                            {
+                                row.Add("");
+                            }
                         }
-                        else
+                        foreach (var pres in taskPresentations.Where(t => t.ActivityId == actId))
                         {
-                            row.Add("");
+                            if (evalMap.TryGetValue((student.Id, pres.Id), out var eval))
+                            {
+                                row.Add(eval.Score.ToString("F2"));
+                                actSum += eval.Score;
+                                hasAny = true;
+                            }
+                            else
+                            {
+                                row.Add("");
+                            }
                         }
                     }
-                    // Total column for this activity
-                    row.Add(hasAny ? actSum.ToString("F2") : "");
+                    else
+                    {
+                        // Summary only — still need to sum all scores
+                        foreach (var task in tasks.Where(t => t.ActivityId == actId))
+                            if (evalMap.TryGetValue((student.Id, task.Id), out var eval))
+                            { actSum += eval.Score; hasAny = true; }
+                        foreach (var pres in taskPresentations.Where(t => t.ActivityId == actId))
+                            if (evalMap.TryGetValue((student.Id, pres.Id), out var eval))
+                            { actSum += eval.Score; hasAny = true; }
+                    }
+
+                    if (request.IncludeTasksSummary)
+                        row.Add(hasAny ? actSum.ToString("F2") : "");
+                    grandTotal += actSum;
+                    if (hasAny) hasGrandAny = true;
                 }
+
+                if (request.IncludeTasksSummary)
+                    row.Add(hasGrandAny ? grandTotal.ToString("F2") : "");
             }
 
             if (request.IncludeOtherAttributes)
@@ -271,9 +375,12 @@ public class CustomExportService : ICustomExportService
     {
         { "students",      "#1e3a5f" },  // dark navy
         { "attendance",    "#1a5276" },  // dark teal-blue
+        { "att-sum",       "#0e3a50" },  // darker teal — attendance summary
         { "activities",    "#1e8449" },  // dark green
         { "tasks",         "#6c3483" },  // dark purple
+        { "tasks-pres",    "#7d3c00" },  // dark brown — presentation scores
         { "tasks-sum",     "#4a235a" },  // deeper purple — activity total
+        { "tasks-total",   "#2d1436" },  // darkest purple — grand total
         { "presentations", "#935116" },  // dark amber
         { "other",         "#117a65" },  // dark teal
     };
@@ -399,7 +506,9 @@ public class CustomExportService : ICustomExportService
             { "attendance",    "Dochádzka — P = Prítomný  |  N = Neprítomný  |  O = Ospravedlnený" },
             { "activities",    "Aktivity — ✓ znamená, že študent je priradený k danej aktivite" },
             { "tasks",         "Úlohy a hodnotenia — číselné skóre za každú úlohu, prázdne ak nie je hodnotené" },
-            { "tasks-sum",     "Celkom za aktivitu — súčet všetkých skóre úloh v rámci aktivity" },
+            { "tasks-pres",    "Prezentácie (skóre) — číselné skóre za prezentáciu, prázdne ak nie je hodnotené" },
+            { "tasks-sum",     "Celkom za aktivitu — súčet skóre úloh a prezentácií v rámci aktivity" },
+            { "tasks-total",   "Celkom (všetky aktivity) — súčet všetkých skóre za všetky aktivity" },
             { "presentations", "Prezentácie — ✓ (Prezentujúci) = prezentujúci študent  |  ✓ (Náhradník) = náhradník  |  prázdne = nepriradený" },
             { "other",         "Ostatné atribúty — vlastné hodnoty atribútov na študenta" },
         };

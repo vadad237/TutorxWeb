@@ -377,10 +377,13 @@ document.addEventListener('DOMContentLoaded', function () {
     addTaskBtn.addEventListener('click', function () {
         var title = document.getElementById('taskTitle').value.trim();
         if (!title) return;
+        var maxScoreInput = document.getElementById('taskMaxScore');
+        var body = 'title=' + encodeURIComponent(title) + '&activityId=' + activityId + '&isPresentation=false';
+        if (maxScoreInput && maxScoreInput.value.trim() !== '') body += '&maxScore=' + encodeURIComponent(maxScoreInput.value.trim());
         fetch('/Tasks/Create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'title=' + encodeURIComponent(title) + '&activityId=' + activityId + '&isPresentation=false'
+            body: body
         })
         .then(function (r) { return r.json(); })
         .then(function (d) { if (d.success) location.reload(); else showToast(d.message); });
@@ -388,6 +391,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('taskTitle').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); addTaskBtn.click(); }
+    });
+})();
+
+(function () {
+    document.querySelectorAll('.task-max-score-input').forEach(function (input) {
+        var lastValue = input.value;
+        input.addEventListener('change', function () {
+            var taskId = this.dataset.id;
+            var val = this.value.trim();
+            var body = 'id=' + encodeURIComponent(taskId);
+            if (val !== '') body += '&maxScore=' + encodeURIComponent(val);
+            fetch('/Tasks/SetMaxScore', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.success) {
+                    lastValue = val;
+                    showToast('Max skóre uložené.', 'success');
+                } else {
+                    input.value = lastValue;
+                    showToast(d.message || 'Chyba pri ukladaní.', 'danger');
+                }
+            });
+        });
     });
 })();
 
@@ -624,12 +654,21 @@ document.querySelectorAll('.btn-delete-task').forEach(function (btn) {
     if (!addPresBtn) return;
     var activityId = addPresBtn.dataset.activityId;
 
+    var presDateIso = '';
+    var presDateInput = document.getElementById('presDate');
+    if (presDateInput) {
+        presDateInput.addEventListener('change', function () {
+            presDateIso = presDateInput.value;
+        });
+    }
+
     addPresBtn.addEventListener('click', function () {
         var title = document.getElementById('presTitle').value.trim();
         if (!title) return;
-        var date = document.getElementById('presDate').value;
+        var maxScoreInput = document.getElementById('presMaxScore');
         var body = 'title=' + encodeURIComponent(title) + '&activityId=' + activityId + '&isPresentation=true';
-        if (date) body += '&presentationDate=' + encodeURIComponent(date);
+        if (presDateIso) body += '&presentationDate=' + encodeURIComponent(presDateIso);
+        if (maxScoreInput && maxScoreInput.value.trim() !== '') body += '&maxScore=' + encodeURIComponent(maxScoreInput.value.trim());
         fetch('/Tasks/Create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -664,7 +703,7 @@ document.querySelectorAll('.pres-date-input').forEach(function (input) {
         fetch('/Tasks/SetDate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'id=' + this.dataset.id + '&presentationDate=' + encodeURIComponent(this.value)
+            body: 'id=' + input.dataset.id + '&presentationDate=' + encodeURIComponent(input.value)
         });
     });
 });
@@ -1125,13 +1164,48 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
     function normalize(str) {
         return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     }
+
     var input = document.getElementById('studentSearch');
-    if (!input) return;
+    if (!input || !document.getElementById('attendanceTable')) return;
+
+    var attTable = document.getElementById('attendanceTable');
+    var tbody    = attTable.querySelector('tbody');
+
+    // ── Search ────────────────────────────────────────────────────────────
     input.addEventListener('input', function () {
         var filter = normalize(this.value.trim());
-        document.querySelectorAll('#attendanceTable tbody tr').forEach(function (row) {
-            var name = normalize(row.cells[0]?.textContent.trim() ?? '');
-            row.style.display = (!filter || name.includes(filter)) ? '' : 'none';
+        tbody.querySelectorAll('tr').forEach(function (row) {
+            var last  = normalize(row.cells[0]?.textContent.trim() ?? '');
+            var first = normalize(row.cells[1]?.textContent.trim() ?? '');
+            row.style.display = (!filter || last.includes(filter) || first.includes(filter)) ? '' : 'none';
+        });
+    });
+
+    // ── Sort ──────────────────────────────────────────────────────────────
+    var sortColIdx = -1;
+    var sortAsc    = true;
+
+    attTable.querySelectorAll('thead th[data-sort]').forEach(function (th) {
+        th.addEventListener('click', function () {
+            var colIdx = Array.from(th.closest('tr').children).indexOf(th);
+            if (sortColIdx === colIdx) {
+                sortAsc = !sortAsc;
+            } else {
+                sortColIdx = colIdx;
+                sortAsc = true;
+            }
+            attTable.querySelectorAll('thead th[data-sort]').forEach(function (h) {
+                h.classList.remove('sort-asc', 'sort-desc');
+            });
+            th.classList.add(sortAsc ? 'sort-asc' : 'sort-desc');
+
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort(function (a, b) {
+                var va = normalize(a.cells[colIdx]?.textContent.trim() ?? '');
+                var vb = normalize(b.cells[colIdx]?.textContent.trim() ?? '');
+                return sortAsc ? va.localeCompare(vb, 'sk') : vb.localeCompare(va, 'sk');
+            });
+            rows.forEach(function (r) { tbody.appendChild(r); });
         });
     });
 })();
@@ -1210,6 +1284,36 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
         if (!link || link.classList.contains('eval-nav-link')) return;
         sessionStorage.removeItem(SEARCH_KEY);
         sessionStorage.removeItem(ACTIVITY_KEY);
+    });
+
+    // ── Sort by student name ──────────────────────────────────────────────
+    var evalTable     = document.getElementById('evalTable');
+    var evalTbody     = evalTable.querySelector('tbody');
+    var evalSortCol   = -1;
+    var evalSortAsc   = true;
+
+    evalTable.querySelectorAll('thead th[data-sort]').forEach(function (th) {
+        th.addEventListener('click', function () {
+            var colIdx = Array.from(th.closest('tr').children).indexOf(th);
+            if (evalSortCol === colIdx) {
+                evalSortAsc = !evalSortAsc;
+            } else {
+                evalSortCol = colIdx;
+                evalSortAsc = true;
+            }
+            evalTable.querySelectorAll('thead th[data-sort]').forEach(function (h) {
+                h.classList.remove('sort-asc', 'sort-desc');
+            });
+            th.classList.add(evalSortAsc ? 'sort-asc' : 'sort-desc');
+
+            var rows = Array.from(evalTbody.querySelectorAll('tr'));
+            rows.sort(function (a, b) {
+                var va = normalize(a.cells[colIdx]?.textContent.trim() ?? '');
+                var vb = normalize(b.cells[colIdx]?.textContent.trim() ?? '');
+                return evalSortAsc ? va.localeCompare(vb, 'sk') : vb.localeCompare(va, 'sk');
+            });
+            rows.forEach(function (r) { evalTbody.appendChild(r); });
+        });
     });
 })();
 
