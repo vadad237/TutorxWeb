@@ -29,7 +29,7 @@ public class AttendanceController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Record(int? groupId, DateOnly? date)
+    public async Task<IActionResult> Record(int? groupId, DateOnly? date, TimeOnly? time)
     {
         await PopulateActiveGroupAsync();
         var gid = groupId ?? HttpContext.Session.GetActiveGroup();
@@ -40,7 +40,7 @@ public class AttendanceController : Controller
         }
 
         var targetDate = date ?? DateOnly.FromDateTime(DateTime.Today);
-        var vm = await _attendanceService.GetAttendanceRecordAsync(gid.Value, targetDate);
+        var vm = await _attendanceService.GetAttendanceRecordAsync(gid.Value, targetDate, time);
         if (vm == null) return NotFound();
 
         return View(vm);
@@ -52,16 +52,17 @@ public class AttendanceController : Controller
         var records = vm.Rows
             .Where(r => r.Status.HasValue)
             .Select(r => (r.StudentId, r.Status!.Value)).ToList();
-        await _attendanceService.SaveAttendanceAsync(vm.GroupId, vm.Date, records);
+        await _attendanceService.SaveAttendanceAsync(vm.GroupId, vm.Date, vm.Time, records);
 
-        TempData["Success"] = $"Dochádzka uložená pre {vm.Date:dd.MM.yyyy}.";
-        return RedirectToAction(nameof(Record), new { groupId = vm.GroupId, date = vm.Date.ToString("yyyy-MM-dd") });
+        TempData["Success"] = $"Dochádzka uložená pre {vm.Date:dd.MM.yyyy}{(vm.Time.HasValue ? $" {vm.Time.Value:HH:mm}" : "")}.";
+        var redirectParams = new { groupId = vm.GroupId, date = vm.Date.ToString("yyyy-MM-dd"), time = vm.Time.HasValue ? vm.Time.Value.ToString("HH:mm") : null };
+        return RedirectToAction(nameof(Record), redirectParams);
     }
 
     [HttpPost]
-    public async Task<IActionResult> SaveSingle(int groupId, DateOnly date, int studentId, AttendanceStatus status)
+    public async Task<IActionResult> SaveSingle(int groupId, DateOnly date, TimeOnly? time, int studentId, AttendanceStatus status)
     {
-        await _attendanceService.SaveAttendanceAsync(groupId, date, [(studentId, status)]);
+        await _attendanceService.SaveAttendanceAsync(groupId, date, time, [(studentId, status)]);
         return Ok();
     }
 

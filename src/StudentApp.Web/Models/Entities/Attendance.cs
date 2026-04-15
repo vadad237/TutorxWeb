@@ -8,6 +8,7 @@ public class Attendance
     public int StudentId { get; set; }
     public int GroupId { get; set; }
     public DateOnly Date { get; set; }
+    public TimeOnly? Time { get; set; }
     public AttendanceStatus Status { get; set; } = AttendanceStatus.Present;
 
     public Student Student { get; set; } = null!;

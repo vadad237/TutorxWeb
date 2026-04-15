@@ -1,5 +1,8 @@
 @model AttendanceRecordVm
-@{ ViewData["Title"] = "Zaznamenávať dochádzku"; }
+@{
+    ViewData["Title"] = "Zaznamenávať dochádzku";
+    var groupNumbers = Model?.Rows.Where(r => r.GroupNumber != null).Select(r => r.GroupNumber!).Distinct().OrderBy(g => g).ToList() ?? [];
+}
 
 @if ((bool?)ViewBag.NoGroupSelected == true)
 {
@@ -18,21 +21,36 @@
 <form asp-action="Record" method="post">
     <input type="hidden" asp-for="GroupId" />
     <input type="hidden" asp-for="GroupName" />
+    <input type="hidden" asp-for="Time" id="timeHidden" />
 
     <div class="row mb-3">
         <div class="col-md-3">
             <label asp-for="Date" class="form-label">Dátum</label>
-            <input asp-for="Date" type="date" class="form-control" id="dateInput"
-                   max="@DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd")" />
+            <input asp-for="Date" type="date" class="form-control" id="dateInput" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Čas</label>
+            <input type="time" class="form-control" id="timeInput"
+                   value="@(Model.Time.HasValue ? Model.Time.Value.ToString("HH:mm") : "")" />
         </div>
     </div>
 
-    <div class="mb-2" style="max-width:300px;">
-        <div class="input-group input-group-sm">
+    <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
+        <div class="input-group input-group-sm" style="max-width:300px;">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
             <input type="search" id="studentSearch" class="form-control"
                    placeholder="Hľadať študenta…" autocomplete="off" />
         </div>
+        @if (groupNumbers.Any())
+        {
+            <select id="groupNumberFilter" class="form-select form-select-sm" style="max-width:200px;">
+                <option value="">Všetky krúžky</option>
+                @foreach (var g in groupNumbers)
+                {
+                    <option value="@g">@g</option>
+                }
+            </select>
+        }
     </div>
 
     <table class="table table-striped" id="attendanceTable">
@@ -40,6 +58,7 @@
             <tr>
                 <th data-sort="text">Priezvisko<span class="sort-icon"></span></th>
                 <th data-sort="text">Meno<span class="sort-icon"></span></th>
+                <th data-sort="text">Krúžok<span class="sort-icon"></span></th>
                 <th>Prítomný</th>
                 <th>Neprítomný</th>
                 <th>Ospravedlnený</th>
@@ -49,13 +68,15 @@
             @for (int i = 0; i < Model.Rows.Count; i++)
             {
                 var row = Model.Rows[i];
-                <tr>
+                <tr data-name="@(row.LastName.ToLowerInvariant()) @(row.FirstName.ToLowerInvariant())"
+                    data-groupnumber="@(row.GroupNumber?.ToLowerInvariant() ?? "")">
                     <td>
                         <input type="hidden" name="Rows[@i].StudentId" value="@row.StudentId" />
                         <input type="hidden" name="Rows[@i].FullName" value="@row.FullName" />
                         @row.LastName
                     </td>
                     <td>@row.FirstName</td>
+                    <td>@(row.GroupNumber ?? "-")</td>
                     <td>
                         <input type="radio" name="Rows[@i].Status" value="Present"
                                class="form-check-input" @(row.Status == AttendanceStatus.Present || row.Status == null ? "checked" : "") />

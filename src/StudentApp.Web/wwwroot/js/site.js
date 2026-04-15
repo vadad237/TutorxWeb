@@ -1151,13 +1151,62 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
 
 // ── Attendance/Record.cshtml ──────────────────────────────────────────────
 (function () {
-    var dateInput = document.getElementById('dateInput');
+    var dateInput  = document.getElementById('dateInput');
+    var timeInput  = document.getElementById('timeInput');
+    var timeHidden = document.getElementById('timeHidden');
     if (!dateInput) return;
+
+    var TIME_KEY = 'attFilter_time';
+
+    // Sync hidden field from the visible time input so the form POST includes it
+    function syncTimeHidden() {
+        if (timeHidden) timeHidden.value = timeInput ? timeInput.value : '';
+    }
+
+    // If no value came from the server, restore last saved value from sessionStorage
+    if (timeInput && !timeInput.value) {
+        var savedTime = sessionStorage.getItem(TIME_KEY) || '';
+        if (savedTime) timeInput.value = savedTime;
+    }
+    syncTimeHidden();
+
     dateInput.addEventListener('change', function () {
-        var gid = document.querySelector('input[name="GroupId"]').value;
+        var gid  = document.querySelector('input[name="GroupId"]').value;
         var date = this.value;
-        window.location.href = '/Attendance/Record?groupId=' + gid + '&date=' + date;
+        var time = timeInput ? timeInput.value : '';
+        var url  = '/Attendance/Record?groupId=' + gid + '&date=' + date;
+        if (time) url += '&time=' + encodeURIComponent(time);
+        window.location.href = url;
     });
+
+    if (timeInput) {
+        var timeChangeTimer = null;
+
+        function doTimeNavigate() {
+            var gid  = document.querySelector('input[name="GroupId"]').value;
+            var date = dateInput.value;
+            var time = timeInput.value;
+            sessionStorage.setItem(TIME_KEY, time);
+            syncTimeHidden();
+            var url  = '/Attendance/Record?groupId=' + gid + '&date=' + date;
+            if (time) url += '&time=' + encodeURIComponent(time);
+            window.location.href = url;
+        }
+
+        // 'input' fires on every keystroke/spinner change; debounce so we only
+        // navigate after the user has stopped changing the value for 800 ms.
+        timeInput.addEventListener('input', function () {
+            clearTimeout(timeChangeTimer);
+            timeChangeTimer = setTimeout(doTimeNavigate, 800);
+        });
+
+        // 'change' fires when the field is committed (blur / Enter) — handle
+        // it immediately to avoid the extra 800 ms wait in that case.
+        timeInput.addEventListener('change', function () {
+            clearTimeout(timeChangeTimer);
+            doTimeNavigate();
+        });
+    }
 })();
 
 (function () {
@@ -1168,17 +1217,53 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
     var input = document.getElementById('studentSearch');
     if (!input || !document.getElementById('attendanceTable')) return;
 
-    var attTable = document.getElementById('attendanceTable');
-    var tbody    = attTable.querySelector('tbody');
+    var attTable       = document.getElementById('attendanceTable');
+    var tbody          = attTable.querySelector('tbody');
+    var groupNumSelect = document.getElementById('groupNumberFilter');
+
+    var SEARCH_KEY = 'attFilter_search';
+    var GROUP_KEY  = 'attFilter_group';
+
+    function applyFilters() {
+        var filter   = normalize(input.value.trim());
+        var groupNum = groupNumSelect ? groupNumSelect.value.toLowerCase() : '';
+        tbody.querySelectorAll('tr').forEach(function (row) {
+            var name      = normalize(row.dataset.name || '');
+            var rowGroup  = (row.dataset.groupnumber || '').toLowerCase();
+            var matchName  = !filter   || name.includes(filter);
+            var matchGroup = !groupNum || rowGroup === groupNum;
+            row.style.display = (matchName && matchGroup) ? '' : 'none';
+        });
+    }
+
+    // ── Restore saved state ───────────────────────────────────────────────
+    var savedSearch = sessionStorage.getItem(SEARCH_KEY) || '';
+    var savedGroup  = sessionStorage.getItem(GROUP_KEY)  || '';
+    if (savedSearch) input.value = savedSearch;
+    if (savedGroup && groupNumSelect) groupNumSelect.value = savedGroup;
+    if (savedSearch || savedGroup) applyFilters();
 
     // ── Search ────────────────────────────────────────────────────────────
     input.addEventListener('input', function () {
-        var filter = normalize(this.value.trim());
-        tbody.querySelectorAll('tr').forEach(function (row) {
-            var last  = normalize(row.cells[0]?.textContent.trim() ?? '');
-            var first = normalize(row.cells[1]?.textContent.trim() ?? '');
-            row.style.display = (!filter || last.includes(filter) || first.includes(filter)) ? '' : 'none';
+        sessionStorage.setItem(SEARCH_KEY, this.value.trim());
+        applyFilters();
+    });
+
+    // ── Group number filter ───────────────────────────────────────────────
+    if (groupNumSelect) {
+        groupNumSelect.addEventListener('change', function () {
+            sessionStorage.setItem(GROUP_KEY, this.value);
+            applyFilters();
         });
+    }
+
+    // ── Clear saved filters when navigating away ──────────────────────────
+    document.addEventListener('click', function (e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        sessionStorage.removeItem(SEARCH_KEY);
+        sessionStorage.removeItem(GROUP_KEY);
+        sessionStorage.removeItem('attFilter_time');
     });
 
     // ── Sort ──────────────────────────────────────────────────────────────

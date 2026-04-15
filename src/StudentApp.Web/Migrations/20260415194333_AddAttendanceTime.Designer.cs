@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentApp.Web.Data;
 
@@ -11,9 +12,11 @@ using StudentApp.Web.Data;
 namespace StudentApp.Web.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260415194333_AddAttendanceTime")]
+    partial class AddAttendanceTime
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -367,9 +370,8 @@ namespace StudentApp.Web.Migrations
 
                     b.HasIndex("GroupId");
 
-                    b.HasIndex("StudentId", "GroupId", "Date", "Time")
-                        .IsUnique()
-                        .HasFilter("[Time] IS NOT NULL");
+                    b.HasIndex("StudentId", "GroupId", "Date")
+                        .IsUnique();
 
                     b.ToTable("Attendances");
                 });

@@ -14,10 +14,10 @@ public class AttendanceService : IAttendanceService
         _db = db;
     }
 
-    public async Task<List<Attendance>> GetOrCreateForDateAsync(int groupId, DateOnly date)
+    public async Task<List<Attendance>> GetOrCreateForDateAsync(int groupId, DateOnly date, TimeOnly? time)
     {
         var existing = await _db.Attendances
-            .Where(a => a.GroupId == groupId && a.Date == date)
+            .Where(a => a.GroupId == groupId && a.Date == date && a.Time == time)
             .Include(a => a.Student)
             .ToListAsync();
 
@@ -28,23 +28,22 @@ public class AttendanceService : IAttendanceService
             .Where(s => s.GroupId == groupId && s.IsActive)
             .ToListAsync();
 
-        var records = activeStudents.Select(s => new Attendance
+        return activeStudents.Select(s => new Attendance
         {
             StudentId = s.Id,
             GroupId = groupId,
             Date = date,
+            Time = time,
             Status = AttendanceStatus.Present
         }).ToList();
-
-        return records;
     }
 
-    public async Task SaveAttendanceAsync(int groupId, DateOnly date, List<(int StudentId, AttendanceStatus Status)> records)
+    public async Task SaveAttendanceAsync(int groupId, DateOnly date, TimeOnly? time, List<(int StudentId, AttendanceStatus Status)> records)
     {
         foreach (var (studentId, status) in records)
         {
             var existing = await _db.Attendances
-                .FirstOrDefaultAsync(a => a.StudentId == studentId && a.GroupId == groupId && a.Date == date);
+                .FirstOrDefaultAsync(a => a.StudentId == studentId && a.GroupId == groupId && a.Date == date && a.Time == time);
 
             if (existing != null)
             {
@@ -57,12 +56,14 @@ public class AttendanceService : IAttendanceService
                     StudentId = studentId,
                     GroupId = groupId,
                     Date = date,
+                    Time = time,
                     Status = status
                 });
             }
         }
         await _db.SaveChangesAsync();
     }
+
 
     public async Task<List<Attendance>> GetHistoryAsync(int groupId, DateOnly? from = null, DateOnly? to = null)
     {
@@ -80,12 +81,12 @@ public class AttendanceService : IAttendanceService
             .ToListAsync();
     }
 
-    public async Task<AttendanceRecordVm?> GetAttendanceRecordAsync(int groupId, DateOnly date)
+    public async Task<AttendanceRecordVm?> GetAttendanceRecordAsync(int groupId, DateOnly date, TimeOnly? time)
     {
         var group = await _db.Groups.FindAsync(groupId);
         if (group == null) return null;
 
-        var records = await GetOrCreateForDateAsync(groupId, date);
+        var records = await GetOrCreateForDateAsync(groupId, date, time);
 
         var activeStudents = await _db.Students
             .Where(s => s.GroupId == groupId && s.IsActive)
@@ -99,12 +100,14 @@ public class AttendanceService : IAttendanceService
             GroupId = groupId,
             GroupName = group.Name,
             Date = date,
+            Time = time,
             Rows = activeStudents.Select(s => new StudentAttendanceRowVm
             {
                 StudentId = s.Id,
                 FirstName = s.FirstName,
                 LastName = s.LastName,
                 FullName = s.FullName,
+                GroupNumber = s.GroupNumber,
                 Status = existingMap.TryGetValue(s.Id, out var status) ? status : null
             }).ToList()
         };

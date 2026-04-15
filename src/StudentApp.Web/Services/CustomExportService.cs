@@ -38,24 +38,29 @@ public class CustomExportService : ICustomExportService
         }
 
         // --- Attendance ---
-        // attendanceDateMap[studentId][date] = status label
-        List<DateOnly> attendanceDates = [];
-        Dictionary<int, Dictionary<DateOnly, string>> attendanceDateMap = new();
+        // attendanceSlots = distinct (Date, Time?) slots in chronological order
+        // attendanceSlotMap[studentId][(date, time)] = status label
+        List<(DateOnly Date, TimeOnly? Time)> attendanceSlots = [];
+        Dictionary<int, Dictionary<(DateOnly, TimeOnly?), string>> attendanceSlotMap = new();
         if (request.IncludeAttendance)
         {
             var records = await _db.Attendances
                 .Where(a => a.GroupId == request.GroupId)
-                .OrderBy(a => a.Date)
+                .OrderBy(a => a.Date).ThenBy(a => a.Time)
                 .ToListAsync();
 
-            attendanceDates = records.Select(a => a.Date).Distinct().OrderBy(d => d).ToList();
+            attendanceSlots = records
+                .Select(a => (a.Date, a.Time))
+                .Distinct()
+                .OrderBy(s => s.Date).ThenBy(s => s.Time)
+                .ToList();
 
-            attendanceDateMap = records
+            attendanceSlotMap = records
                 .GroupBy(a => a.StudentId)
                 .ToDictionary(
                     g => g.Key,
                     g => g.ToDictionary(
-                        a => a.Date,
+                        a => (a.Date, a.Time),
                         a => a.Status switch
                         {
                             AttendanceStatus.Present => "P",
@@ -64,15 +69,21 @@ public class CustomExportService : ICustomExportService
                             _ => ""
                         }));
 
-            foreach (var date in attendanceDates)
-                if (request.IncludeAttendanceDetails)
-                    headers.Add((date.ToString("dd.MM.yyyy"), "attendance"));
+            if (request.IncludeAttendanceDetails)
+                foreach (var (date, time) in attendanceSlots)
+                {
+                    var label = time.HasValue
+                        ? $"{date:dd.MM.yyyy} {time.Value:HH:mm}"
+                        : date.ToString("dd.MM.yyyy");
+                    headers.Add((label, "attendance"));
+                }
+
             if (request.IncludeAttendanceSummary)
             {
-                headers.Add(("Prítomný",    "att-sum"));
-                headers.Add(("Neprítomný",  "att-sum"));
+                headers.Add(("Prítomný",      "att-sum"));
+                headers.Add(("Neprítomný",    "att-sum"));
                 headers.Add(("Ospravedlnený", "att-sum"));
-                headers.Add(("Dochádzka %",  "att-sum"));
+                headers.Add(("Dochádzka %",   "att-sum"));
             }
         }
 
@@ -242,15 +253,15 @@ public class CustomExportService : ICustomExportService
 
             if (request.IncludeAttendance)
             {
-                var studentAtt = attendanceDateMap.GetValueOrDefault(student.Id) ?? [];
+                var studentAtt = attendanceSlotMap.GetValueOrDefault(student.Id) ?? [];
                 if (request.IncludeAttendanceDetails)
-                    foreach (var date in attendanceDates)
-                        row.Add(studentAtt.GetValueOrDefault(date, ""));
+                    foreach (var slot in attendanceSlots)
+                        row.Add(studentAtt.GetValueOrDefault(slot, ""));
                 if (request.IncludeAttendanceSummary)
                 {
-                    var present = attendanceDates.Count(d => studentAtt.GetValueOrDefault(d) == "P");
-                    var absent  = attendanceDates.Count(d => studentAtt.GetValueOrDefault(d) == "N");
-                    var excused = attendanceDates.Count(d => studentAtt.GetValueOrDefault(d) == "O");
+                    var present = attendanceSlots.Count(s => studentAtt.GetValueOrDefault(s) == "P");
+                    var absent  = attendanceSlots.Count(s => studentAtt.GetValueOrDefault(s) == "N");
+                    var excused = attendanceSlots.Count(s => studentAtt.GetValueOrDefault(s) == "O");
                     var total   = present + absent + excused;
                     var pct     = total > 0 ? Math.Round((double)present / total * 100, 1) : 0.0;
                     row.Add(present.ToString());

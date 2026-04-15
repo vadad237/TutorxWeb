@@ -32,9 +32,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Student>().HasIndex(s => s.CardNumber)
             .HasFilter("[CardNumber] IS NOT NULL");
 
-        // Attendance unique constraint
+        // Attendance unique constraint — each student can have one record per (date, time) slot
         builder.Entity<Attendance>()
-            .HasIndex(a => new { a.StudentId, a.GroupId, a.Date }).IsUnique();
+            .HasIndex(a => new { a.StudentId, a.GroupId, a.Date, a.Time }).IsUnique();
 
         // Evaluation unique constraint
         builder.Entity<Evaluation>()
