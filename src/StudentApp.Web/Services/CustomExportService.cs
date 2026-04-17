@@ -35,6 +35,7 @@ public class CustomExportService : ICustomExportService
             if (request.IncludeStudentCardNumber) headers.Add(("Číslo karty", "students"));
             if (request.IncludeStudentYear)       headers.Add(("Ročník",      "students"));
             if (request.IncludeStudentEmail)      headers.Add(("Email",       "students"));
+            if (request.IncludeStudentGroupNumber) headers.Add(("Krúžok",     "students"));
         }
 
         // --- Attendance ---
@@ -249,6 +250,7 @@ public class CustomExportService : ICustomExportService
                 if (request.IncludeStudentCardNumber) row.Add(student.CardNumber ?? "");
                 if (request.IncludeStudentYear)       row.Add(student.Year?.ToString() ?? "");
                 if (request.IncludeStudentEmail)      row.Add(student.Email ?? "");
+                if (request.IncludeStudentGroupNumber) row.Add(student.GroupNumber?.ToString() ?? "");
             }
 
             if (request.IncludeAttendance)

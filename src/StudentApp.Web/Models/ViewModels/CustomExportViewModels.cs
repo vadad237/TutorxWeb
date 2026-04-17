@@ -9,6 +9,7 @@ public class CustomExportRequestVm
     public bool IncludeStudentCardNumber { get; set; } = true;
     public bool IncludeStudentYear { get; set; } = true;
     public bool IncludeStudentEmail { get; set; } = true;
+    public bool IncludeStudentGroupNumber { get; set; } = true;
     public bool IncludeAttendance { get; set; }
     public bool IncludeAttendanceDetails { get; set; } = true;
     public bool IncludeAttendanceSummary { get; set; } = true;
