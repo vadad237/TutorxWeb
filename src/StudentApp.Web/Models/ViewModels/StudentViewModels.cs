@@ -85,6 +85,7 @@ public class StudentDetailsVm
     public string? Email { get; set; }
     public string? CardNumber { get; set; }
     public int? Year { get; set; }
+    public string? GroupNumber { get; set; }
     public bool IsActive { get; set; }
     public int GroupId { get; set; }
     public string GroupName { get; set; } = null!;

@@ -96,9 +96,9 @@ document.addEventListener('DOMContentLoaded', function () {
             var id = this.dataset.id;
             var name = this.dataset.name;
             var students = parseInt(this.dataset.students) || 0;
-            var msg = 'Natárvalo vymazať "' + name + '"? Túto akciu nemožno vrátiť.';
+            var msg = 'Naozaj chcete odstrániť túto skupinu "' + name + '"? Túto akciu nie je možné vrátiť.';
             if (students > 0)
-                msg += '\n\n⚠ Týmto sa tiež vymaže ' + students + ' študent' + (students > 1 ? 'ov' : '') + ' a všetky ich zadania, hodnotenia, záznamy dochádzky a história žrebovania.';
+                msg += '\n\n⚠ Spolu so skupinou budú odstránení aj študenti (počet: ' + students + ') vrátane všetkých ich zadaní, hodnotení, záznamov o dochádzke a histórie žrebovania.';
             confirmAction('Vymazať skupinu', msg, function () {
                 fetch('/Groups/Delete/' + id, { method: 'POST' })
                     .then(function (r) { return r.json(); })

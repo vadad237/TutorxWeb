@@ -108,6 +108,7 @@ public class StudentService : IStudentService
             Email = student.Email,
             CardNumber = student.CardNumber,
             Year = student.Year,
+            GroupNumber = student.GroupNumber,
             IsActive = student.IsActive,
             GroupId = student.GroupId,
             GroupName = student.Group.Name,

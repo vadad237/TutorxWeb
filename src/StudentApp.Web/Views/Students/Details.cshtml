@@ -16,6 +16,7 @@
                 <p><strong>Email:</strong> @(Model.Email ?? "Nie je")</p>
                 <p><strong>Číslo karty:</strong> @(Model.CardNumber ?? "Nie je")</p>
                 <p><strong>Ročník:</strong> @(Model.Year.HasValue ? Model.Year.Value.ToString() : "Nie je")</p>
+                <p><strong>Krúžok:</strong> @(Model.GroupNumber ?? "Nie je")</p>
                 <p><strong>Skupina:</strong> @Model.GroupName</p>
                 <p><strong>Stav:</strong>
                     @if (Model.IsActive) { <span class="badge bg-success">Aktívny</span> }
