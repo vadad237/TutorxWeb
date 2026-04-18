@@ -4,13 +4,14 @@
     var allStudents = (List<StudentSummaryVm>)ViewBag.AllStudents;
 }
 
-@if (Model.AssignedStudents.Any())
-{
-    <script id="assigned-students-data" type="application/json">
-        @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            Model.AssignedStudents.Select(s => new { id = s.StudentId, name = s.FullName })))
-    </script>
-}
+<script id="assigned-students-data" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        Model.AssignedStudents.Select(s => new { id = s.StudentId, name = s.FullName })))
+</script>
+<script id="all-students-data" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        allStudents.Select(s => new { id = s.Id, name = s.FullName })))
+</script>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>@Model.Name</h2>
@@ -143,29 +144,29 @@
                                         <span class="text-muted small">Žiadni</span>
                                     }
                                 </div>
-                                @if (Model.AssignedStudents.Any())
-                                {
-                                    <div class="dropdown numbered-task-student-dropdown" data-task-id="@t.TaskId" data-badge-area="num-task-badges-@t.TaskId">
-                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                                            <i class="bi bi-people"></i>
-                                        </button>
-                                        <ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">
-                                            @foreach (var s in Model.AssignedStudents)
-                                            {
-                                                var isAssigned = t.AssignedStudents.Any(ps => ps.StudentId == s.StudentId);
-                                                <li>
-                                                    <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">
-                                                        <input class="form-check-input mt-0 flex-shrink-0 pres-student-cb"
-                                                               type="checkbox" value="@s.StudentId" data-name="@s.FullName"
-                                                               @(isAssigned ? "checked" : "") />
-                                                        @s.FullName
-                                                    </label>
-                                                </li>
-                                            }
-                                        </ul>
-                                    </div>
+                                @{
+                                    var taskStudentSource = Model.AssignedStudents.Any() ? Model.AssignedStudents.Select(s => (StudentId: s.StudentId, FullName: s.FullName)) : allStudents.Select(s => (StudentId: s.Id, FullName: s.FullName));
                                 }
+                                <div class="dropdown numbered-task-student-dropdown" data-task-id="@t.TaskId" data-badge-area="num-task-badges-@t.TaskId">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                        <i class="bi bi-people"></i>
+                                    </button>
+                                    <ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">
+                                        @foreach (var s in taskStudentSource)
+                                        {
+                                            var isAssigned = t.AssignedStudents.Any(ps => ps.StudentId == s.StudentId);
+                                            <li>
+                                                <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">
+                                                    <input class="form-check-input mt-0 flex-shrink-0 pres-student-cb"
+                                                           type="checkbox" value="@s.StudentId" data-name="@s.FullName"
+                                                           @(isAssigned ? "checked" : "") />
+                                                    @s.FullName
+                                                </label>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
                             </div>
                         </td>
                         <td>
@@ -552,7 +553,7 @@ else
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <label for="numberedTasksCountInput" class="form-label">Koľko zadaní pridať?</label>
+                <label for="numberedTasksCountInput" class="form-label">Počet zadaní</label>
                 <input type="number" id="numberedTasksCountInput" class="form-control" value="1" min="1" max="100" />
                 <div id="numberedTasksCountError" class="text-danger small mt-1 d-none">Zadajte číslo medzi 1 a 100.</div>
             </div>

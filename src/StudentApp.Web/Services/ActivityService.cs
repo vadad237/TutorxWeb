@@ -298,7 +298,7 @@ public class ActivityService : IActivityService
     public async Task<(bool Success, int? NewId, string? Message)> DuplicateActivityAsync(int id)
     {
         var source = await _db.Activities
-            .Include(a => a.Tasks)
+            .Include(a => a.Tasks).ThenInclude(t => t.PresentationStudents)
             .Include(a => a.Assignments)
             .Include(a => a.OtherAttributes).ThenInclude(attr => attr.Options)
             .Include(a => a.OtherAttributes).ThenInclude(attr => attr.StudentValues)
@@ -315,21 +315,31 @@ public class ActivityService : IActivityService
             CreatedAt   = DateTime.UtcNow
         };
 
+        var taskIdMap = new Dictionary<int, TaskItem>();
         foreach (var t in source.Tasks)
         {
-            copy.Tasks.Add(new TaskItem
+            var taskCopy = new TaskItem
             {
                 Title            = t.Title,
                 IsPresentation   = t.IsPresentation,
-                PresentationDate = t.PresentationDate
-            });
+                IsNumberedTask   = t.IsNumberedTask,
+                PresentationDate = t.PresentationDate,
+                MaxScore         = t.MaxScore
+            };
+            copy.Tasks.Add(taskCopy);
+            taskIdMap[t.Id] = taskCopy;
         }
 
         foreach (var a in source.Assignments)
         {
+            TaskItem? mappedTask = null;
+            if (a.TaskItemId.HasValue)
+                taskIdMap.TryGetValue(a.TaskItemId.Value, out mappedTask);
+
             copy.Assignments.Add(new Assignment
             {
                 StudentId  = a.StudentId,
+                TaskItem   = mappedTask!,
                 AssignedAt = DateTime.UtcNow
             });
         }
@@ -349,6 +359,26 @@ public class ActivityService : IActivityService
 
         _db.Activities.Add(copy);
         await _db.SaveChangesAsync();
+
+        // Copy presentation students using the resolved new task IDs
+        var presStudents = new List<PresentationStudent>();
+        foreach (var t in source.Tasks)
+        {
+            if (!taskIdMap.TryGetValue(t.Id, out var newTask)) continue;
+            foreach (var ps in t.PresentationStudents)
+            {
+                presStudents.Add(new PresentationStudent
+                {
+                    TaskItemId = newTask.Id,
+                    StudentId  = ps.StudentId,
+                    Role       = ps.Role
+                });
+            }
+        }
+        if (presStudents.Count > 0)
+        {
+            _db.Set<PresentationStudent>().AddRange(presStudents);
+        }
 
         var attrMap = source.OtherAttributes
             .Zip(copy.OtherAttributes, (src, dst) => (src, dst))

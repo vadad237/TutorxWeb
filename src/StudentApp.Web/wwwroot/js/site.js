@@ -979,10 +979,13 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
 (function () {
     var dataEl = document.getElementById('assigned-students-data');
     var assignedStudents = dataEl ? JSON.parse(dataEl.textContent) : [];
+    var allStudentsEl = document.getElementById('all-students-data');
+    var allStudents = allStudentsEl ? JSON.parse(allStudentsEl.textContent) : [];
 
     function buildNumberedTaskDropdownHtml(taskId) {
-        if (!assignedStudents.length) return '';
-        var items = assignedStudents.map(function (s) {
+        var studentSource = assignedStudents.length ? assignedStudents : allStudents;
+        if (!studentSource.length) return '';
+        var items = studentSource.map(function (s) {
             return '<li><label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">' +
                 '<input class="form-check-input mt-0 flex-shrink-0 pres-student-cb" type="checkbox" value="' + s.id + '" data-name="' + s.name.replace(/"/g, '&quot;') + '" />' +
                 s.name + '</label></li>';
@@ -1025,7 +1028,7 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
 
     document.querySelectorAll('.numbered-task-student-dropdown').forEach(wireNumberedTaskDropdown);
 
-    window.buildNumberedTaskDropdownHtml
+    window.buildNumberedTaskDropdownHtml = buildNumberedTaskDropdownHtml;
     window.wireNumberedTaskDropdown = wireNumberedTaskDropdown;
 })();
 
