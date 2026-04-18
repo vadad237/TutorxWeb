@@ -72,6 +72,14 @@ public class EvaluationService : IEvaluationService
             }
         }
 
+        var activityIds = tasks.Select(t => t.ActivityId).ToHashSet();
+        var assignments = await _db.Assignments
+            .Where(a => activityIds.Contains(a.ActivityId) && a.TaskItemId != null)
+            .ToListAsync();
+        var assignedStudentTasks = assignments
+            .Select(a => (a.StudentId, TaskItemId: a.TaskItemId!.Value))
+            .ToHashSet();
+
         return new EvaluationIndexVm
         {
             GroupId = groupId,
@@ -96,7 +104,8 @@ public class EvaluationService : IEvaluationService
             StudentAverages = studentAverages,
             TaskAverages = taskAverages,
             TaskSums = taskSums,
-            ActivityStudentSums = activityStudentSums
+            ActivityStudentSums = activityStudentSums,
+            AssignedStudentTasks = assignedStudentTasks
         };
     }
 

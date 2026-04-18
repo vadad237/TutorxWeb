@@ -91,7 +91,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<DrawHistory>()
             .HasOne(d => d.Group)
-            .WithMany(g => g.DrawHistories)
+            .WithMany()
             .HasForeignKey(d => d.GroupId)
             .OnDelete(DeleteBehavior.Restrict);
 
@@ -115,7 +115,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<Attendance>()
             .HasOne(a => a.Group)
-            .WithMany(g => g.Attendances)
+            .WithMany()
             .HasForeignKey(a => a.GroupId)
             .OnDelete(DeleteBehavior.Restrict);
 

@@ -18,6 +18,4 @@ public class Group
 
     public ICollection<Student> Students { get; set; } = [];
     public ICollection<Activity> Activities { get; set; } = [];
-    public ICollection<DrawHistory> DrawHistories { get; set; } = [];
-    public ICollection<Attendance> Attendances { get; set; } = [];
 }

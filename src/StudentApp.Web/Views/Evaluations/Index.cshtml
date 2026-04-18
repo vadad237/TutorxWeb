@@ -90,10 +90,17 @@ else
                                     }
                                     else
                                     {
+                                        if (Model.AssignedStudentTasks.Contains((s.Id, t.Id)))
+                                        {
                                         <a asp-action="Create" asp-route-studentId="@s.Id" asp-route-taskItemId="@t.Id"
                                            class="text-decoration-none eval-nav-link">
                                             <span class="badge bg-light text-secondary border border-dashed" style="font-size:.8rem;letter-spacing:.05em;">+</span>
                                         </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
                                     }
                                 </td>
                             }
