@@ -10,7 +10,7 @@
             <div class="card-body">
                 <h5>Nahrať súbor</h5>
                 <p class="text-muted">Podporované formáty: CSV (.csv) a Excel (.xlsx)</p>
-                <p class="text-muted">Povinné stĺpce: FirstName (alebo Meno), LastName (alebo Priezvisko). Voliteľné: Email</p>
+                <p class="text-muted">Povinné stĺpce: Meno, Priezvisko, Číslo karty. Voliteľné: Email, Krúžok, Ročník</p>
 
                 <form asp-action="ImportPreview" method="post" enctype="multipart/form-data">
                     <input type="hidden" name="groupId" value="@Model.GroupId" />

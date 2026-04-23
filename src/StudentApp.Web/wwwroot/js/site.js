@@ -329,6 +329,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Cache attribute options from server-rendered markup at page load
     var attrOptionsCache = {};
+    window.attrOptionsCache = attrOptionsCache; // shared with manageStatesModal IIFE
     // Cache per-student selected values: { studentId: { attrId: { optionId, optionName, optionColor } } }
     var studentValuesCache = {};
     (function () {
@@ -1094,6 +1095,7 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
     if (!modal) return;
     var bsModal = new bootstrap.Modal(modal);
     var currentAttrId = null;
+    var deletedOptionIds = new Set();
     var modalAttrName  = document.getElementById('modalAttrName');
     var modalSaveBtn   = document.getElementById('modalSaveBtn');
     var modalDeleteBtn = document.getElementById('modalDeleteAttrBtn');
@@ -1101,6 +1103,33 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
     var newStateName   = document.getElementById('newStateName');
     var newStateColor  = document.getElementById('newStateColor');
     var addStateBtn    = document.getElementById('addStateBtn');
+
+    // When the manage-states modal closes, update any table cells whose selected
+    // option was deleted during this session so they revert to the empty state.
+    modal.addEventListener('hidden.bs.modal', function () {
+        if (deletedOptionIds.size === 0 || !currentAttrId) return;
+        var remaining = (window.attrOptionsCache && window.attrOptionsCache[currentAttrId]) ? window.attrOptionsCache[currentAttrId] : [];
+        var validNames = new Set(remaining.map(function (o) { return o.optionName; }));
+        document.querySelectorAll('#otherTable td[data-attr-id="' + currentAttrId + '"]').forEach(function (td) {
+            var btn = td.querySelector('.dropdown-toggle');
+            if (btn) {
+                var text = btn.textContent.trim();
+                if (text && text !== '—' && !validNames.has(text)) {
+                    btn.textContent = '—';
+                    btn.className = 'btn btn-sm dropdown-toggle btn-outline-secondary';
+                }
+            }
+            // Remove the deleted option entries from the dropdown menu
+            deletedOptionIds.forEach(function (deletedId) {
+                var link = td.querySelector('.other-value-pick[data-option-id="' + deletedId + '"]');
+                if (link) {
+                    var li = link.closest('li');
+                    if (li) li.remove();
+                }
+            });
+        });
+        deletedOptionIds.clear();
+    });
 
     function colorLabel(c) {
         var map = { primary: 'Modrá', success: 'Zelená', danger: 'Červená', warning: 'Žltá', info: 'Tyrkysová', secondary: 'Šedá', dark: 'Tmavá' };
@@ -1161,12 +1190,36 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
                 var cNewBtn = cActionBtn.cloneNode(true);
                 cActionBtn.parentNode.replaceChild(cNewBtn, cActionBtn);
                 cNewBtn.addEventListener('click', function () {
+                    // Register the re-open handler BEFORE hiding the confirm modal
+                    // so the hidden.bs.modal event is never missed regardless of
+                    // how quickly the hide animation completes.
+                    cModalEl.addEventListener('hidden.bs.modal', function handler() {
+                        cModalEl.removeEventListener('hidden.bs.modal', handler);
+                        bsModal.show();
+                    });
                     cModal.hide();
+                    var antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
                     fetch('/ActivityAttributes/DeleteOption', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: 'id=' + stateId
-                    }).then(function () { location.reload(); });
+                            + (antiForgeryToken ? '&__RequestVerificationToken=' + encodeURIComponent(antiForgeryToken.value) : '')
+                    }).then(function (r) {
+                        if (!r.ok) { return; }
+                        var row = document.getElementById('state-row-' + stateId);
+                        if (row) row.remove();
+                        if (window.attrOptionsCache && window.attrOptionsCache[currentAttrId]) {
+                            window.attrOptionsCache[currentAttrId] = window.attrOptionsCache[currentAttrId].filter(function (o) {
+                                return String(o.optionId) !== String(stateId);
+                            });
+                        }
+                        if (!statesList.querySelector('[id^="state-row-"]')) {
+                            statesList.innerHTML = '<p class="text-muted small">Žiadne stavy.</p>';
+                        }
+                        deletedOptionIds.add(String(stateId));
+                    }).catch(function () {
+                        showToast('Vymazanie stavu zlyhalo.');
+                    });
                 });
                 cModal.show();
             });
@@ -1176,6 +1229,7 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
     document.querySelectorAll('.btn-manage-attr').forEach(function (btn) {
         btn.addEventListener('click', function () {
             currentAttrId = this.dataset.attrId;
+            deletedOptionIds.clear();
             modalAttrName.value = this.dataset.attrName;
             newStateName.value = '';
             newStateColor.value = 'secondary';

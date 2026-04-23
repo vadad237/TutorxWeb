@@ -262,11 +262,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (maxDrawable === 0) {
                     setBothWarning(remaining);
+                    slotName.style.fontSize = '';
+                    slotName.style.color    = '';
+                    slotName.textContent    = '';
                     countInput.disabled = true;
                     countInput.max = 0;
                     countMax.textContent = '/ 0 (P:0, N:0)';
                 } else {
                     setBothWarning(null);
+                    slotName.style.fontSize = '';
+                    slotName.style.color    = '';
+                    slotName.textContent    = '';
                     countInput.max = maxDrawable;
                     countInput.disabled = false;
                     if (parseInt(countInput.value, 10) > maxDrawable) countInput.value = maxDrawable;
@@ -343,11 +349,17 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (maxDrawable === 0) {
                             renderEligibleStudents(students);
                             setBothWarning(total);
+                            slotName.style.fontSize = '';
+                            slotName.style.color    = '';
+                            slotName.textContent    = '';
                             countInput.disabled = true;
                             countInput.max = 0;
                             countMax.textContent = '/ 0 (P:0, N:0)';
                         } else {
                             setBothWarning(null);
+                            slotName.style.fontSize = '';
+                            slotName.style.color    = '';
+                            slotName.textContent    = '';
                             renderEligibleStudents(students);
                             countInput.max = maxDrawable;
                             countInput.value = Math.min(parseInt(countInput.value, 10) || 1, maxDrawable);
@@ -410,6 +422,13 @@ document.addEventListener('DOMContentLoaded', function () {
             return Promise.resolve();
         };
 
+        // Directly update the eligible tags from an already-fetched student array.
+        // Used by runCardDraw to keep the DOM in sync between sub-phases of a 'both' draw.
+        wrapper._setEligibleFromList = function (students) {
+            renderEligibleStudents(students);
+            syncEligibleCount();
+        };
+
         // ── Include-assigned checkbox ─────────────────────────────────────────
         includeAssignedCb.addEventListener('change', function () {
             if (actSel.value) loadEligible(parseInt(actSel.value, 10));
@@ -458,8 +477,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             await runCardDraw(wrapper);
 
-            // Refresh eligible list after draw
-            wrapper._reloadEligible();
+            // Refresh eligible list and wait for it to complete so the next
+            // draw always starts with an up-to-date pool (no already-drawn students).
+            await wrapper._reloadEligible();
             isCardDrawing = false;
             updateAllButtons();
         });
@@ -604,6 +624,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 for (var i = 0; i < dataP.drawnNames.length; i++) {
                     await revealOneOnCard(cardEl, dataP.drawnNames[i], i, dataP.drawnNames.length, eligibleNames);
+                    var drawnPIdx = eligibleNames.indexOf(dataP.drawnNames[i]);
+                    if (drawnPIdx !== -1) eligibleNames.splice(drawnPIdx, 1);
                 }
 
                 // Reset slot drum for the substitution draw
@@ -617,6 +639,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     + '&role=1' + subInclude;
                 var reloadedSubs = await fetch(subEligibleUrl).then(function (r) { return r.json(); });
                 var subAllowedIds = reloadedSubs.map(function (s) { return String(s.id); });
+
+                // Update the eligible-tags DOM to reflect only substitute-eligible
+                // students. This ensures the slot animation pool for the substitute
+                // phase never includes already-drawn presentees.
+                if (typeof cardEl._setEligibleFromList === 'function') {
+                    cardEl._setEligibleFromList(reloadedSubs);
+                }
 
                 if (subAllowedIds.length === 0) {
                     var labelSNone = document.createElement('div');
@@ -643,9 +672,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     labelS.innerHTML = '<small class="fw-semibold text-warning">Náhradník</small>';
                     resultsList.appendChild(labelS);
 
-                    var subEligibleNames = reloadedSubs.map(function (s) { return s.fullName || ''; }).filter(Boolean);
+                    var drawnPresenteeNames = new Set(dataP.drawnNames || []);
+                    var subEligibleNames = reloadedSubs
+                        .map(function (s) { return s.fullName || ''; })
+                        .filter(function (name) { return name && !drawnPresenteeNames.has(name); });
                     for (var j = 0; j < dataS.drawnNames.length; j++) {
                         await revealOneOnCard(cardEl, dataS.drawnNames[j], j, dataS.drawnNames.length, subEligibleNames);
+                        var drawnSIdx = subEligibleNames.indexOf(dataS.drawnNames[j]);
+                        if (drawnSIdx !== -1) subEligibleNames.splice(drawnSIdx, 1);
                     }
                 } else {
                     var labelSFail = document.createElement('div');
@@ -668,6 +702,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 for (var k = 0; k < data.drawnNames.length; k++) {
                     await revealOneOnCard(cardEl, data.drawnNames[k], k, data.drawnNames.length, eligibleNames);
+                    var drawnIdx = eligibleNames.indexOf(data.drawnNames[k]);
+                    if (drawnIdx !== -1) eligibleNames.splice(drawnIdx, 1);
                 }
             }
 
