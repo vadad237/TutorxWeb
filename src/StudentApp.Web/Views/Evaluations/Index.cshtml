@@ -64,6 +64,11 @@ else
                             <div class="small fw-normal text-dark opacity-75">@act.ActivityName</div>
                             <div>Súčet</div>
                         </th>
+                        <th class="text-center table-secondary" style="min-width:70px;"
+                            data-activity-id="@act.ActivityId">
+                            <div class="small fw-normal text-dark opacity-75">@act.ActivityName</div>
+                            <div>Zadania</div>
+                        </th>
                     }
                     <th class="text-center table-success" style="min-width:70px;" data-total-col="1">
                         <div>Celkom</div>
@@ -106,6 +111,10 @@ else
                             }
                             <td class="text-center table-warning fw-bold" data-activity-id="@act.ActivityId" data-sum-col="@act.ActivityId">
                                 @(Model.ActivityStudentSums.TryGetValue((s.Id, act.ActivityId), out var aSum) ? aSum.ToString("F2") : "-")
+                            </td>
+                            <td class="text-center table-secondary" data-activity-id="@act.ActivityId">
+                                @{ var nVal = Model.NumberedTaskCounts.GetValueOrDefault((s.Id, act.ActivityId)); }
+                                @(string.IsNullOrEmpty(nVal) ? "-" : nVal)
                             </td>
                         }
                         @{

@@ -786,6 +786,35 @@ document.querySelectorAll('.btn-delete-task').forEach(function (btn) {
         .catch(function () { showToast('Nepodarilo sa pridať zadania.'); });
     });
 
+    window.updateTaskAssignmentCounts = function updateTaskAssignmentCounts() {
+        var assignedBadges = document.querySelectorAll('#activity-badge-area [data-student-id]');
+        var withTaskSpan    = document.getElementById('countWithTask');
+        var withoutTaskSpan = document.getElementById('countWithoutTask');
+        if (!withTaskSpan || !withoutTaskSpan) return;
+        var studentsWithTask = new Set();
+        document.querySelectorAll('#numberedTasksTbody tr').forEach(function (tr) {
+            tr.querySelectorAll('.pres-student-cb:checked').forEach(function (cb) {
+                studentsWithTask.add(cb.value);
+            });
+        });
+        var withTask    = 0;
+        var withoutTask = 0;
+        assignedBadges.forEach(function (badge) {
+            var hasTask = studentsWithTask.has(String(badge.dataset.studentId));
+            if (hasTask) {
+                badge.classList.remove('bg-secondary');
+                badge.classList.add('bg-info', 'text-dark');
+                withTask++;
+            } else {
+                badge.classList.remove('bg-info', 'text-dark');
+                badge.classList.add('bg-secondary');
+                withoutTask++;
+            }
+        });
+        withTaskSpan.textContent    = withTask;
+        withoutTaskSpan.textContent = withoutTask;
+    }
+
     function deleteTask(taskId, row) {
         var modalEl = document.getElementById('confirmModal');
         var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -811,6 +840,7 @@ document.querySelectorAll('.btn-delete-task').forEach(function (btn) {
                         if (empty) empty.classList.remove('d-none');
                     }
                     if (heading) heading.textContent = 'Zadania (' + remaining + ')';
+                    if (window.updateTaskAssignmentCounts) window.updateTaskAssignmentCounts();
                 })
                 .catch(function () { showToast('Vymazanie zlyhalo.'); });
         });
@@ -907,6 +937,7 @@ document.querySelectorAll('.btn-delete-task').forEach(function (btn) {
                           if (empty) empty.classList.remove('d-none');
                       }
                       if (heading) heading.textContent = 'Zadania (' + remaining + ')';
+                      if (window.updateTaskAssignmentCounts) window.updateTaskAssignmentCounts();
                       deleteSelectedBtn.disabled = false;
                       updateToolbar();
                   })

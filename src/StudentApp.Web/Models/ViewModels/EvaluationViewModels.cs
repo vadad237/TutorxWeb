@@ -26,6 +26,7 @@ public class EvaluationIndexVm
     public Dictionary<int, decimal> TaskSums { get; set; } = [];
     public Dictionary<(int StudentId, int ActivityId), decimal> ActivityStudentSums { get; set; } = [];
     public HashSet<(int StudentId, int TaskItemId)> AssignedStudentTasks { get; set; } = [];
+    public Dictionary<(int StudentId, int ActivityId), string> NumberedTaskCounts { get; set; } = [];
 }
 
 public class EvaluationCreateVm

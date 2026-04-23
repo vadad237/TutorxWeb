@@ -51,6 +51,7 @@ else
                 <th data-sort="num" style="width:90px">Zadania<span class="sort-icon"></span></th>
                 <th data-sort="num" style="width:80px">Úlohy<span class="sort-icon"></span></th>
                 <th data-sort="num" style="width:110px">Prezentácie<span class="sort-icon"></span></th>
+                <th data-sort="num">Počet študentov<span class="sort-icon"></span></th>
                 <th>Priradení študenti</th>
                 <th>Akcie</th>
             </tr>
@@ -66,6 +67,7 @@ else
                     <td>@a.NumberedTaskCount</td>
                     <td>@a.OrdinaryTaskCount</td>
                     <td>@a.PresentationCount</td>
+                    <td>@a.AssignedCount</td>
                     <td>
                         @if (a.AssignedStudentDetails.Any())
                         {

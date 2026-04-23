@@ -487,7 +487,7 @@ document.addEventListener('DOMContentLoaded', function () {
             slotName.style.color    = '#adb5bd';
             slotName.textContent    = total === 1
                 ? 'Drawing\u2026'
-                : 'Drawing ' + (index + 1) + ' of ' + total + '\u2026';
+                : 'Losovanie  ' + (index + 1) + ' z ' + total + '\u2026';
 
             slotDisplay.classList.remove('locked');
             slotDisplay.classList.add('spinning');

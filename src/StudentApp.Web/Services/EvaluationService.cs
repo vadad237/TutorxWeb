@@ -77,6 +77,26 @@ public class EvaluationService : IEvaluationService
             .Where(a => activityIds.Contains(a.ActivityId))
             .ToListAsync();
 
+        // Count numbered task assignments per (student, activity) via PresentationStudents
+        var numberedTaskIds = await _db.TaskItems
+            .Where(t => activityIds.Contains(t.ActivityId) && t.IsNumberedTask)
+            .Select(t => new { t.Id, t.ActivityId, t.Title })
+            .ToListAsync();
+
+        var numberedTaskActivityMap = numberedTaskIds.ToDictionary(t => t.Id, t => (t.ActivityId, t.Title));
+        var numberedTaskIdSet = numberedTaskActivityMap.Keys.ToHashSet();
+
+        var numberedPresStudents = await _db.PresentationStudents
+            .Where(ps => numberedTaskIdSet.Contains(ps.TaskItemId) && ps.Role == PresentationRole.Presentee)
+            .Select(ps => new { ps.StudentId, ps.TaskItemId })
+            .ToListAsync();
+
+        var numberedTaskCounts = numberedPresStudents
+            .GroupBy(ps => (ps.StudentId, numberedTaskActivityMap[ps.TaskItemId].ActivityId))
+            .ToDictionary(
+                g => g.Key,
+                g => string.Join(", ", g.Select(ps => numberedTaskActivityMap[ps.TaskItemId].Title).OrderBy(t => t)));
+
         var assignedStudentTasks = new HashSet<(int StudentId, int TaskItemId)>();
 
         // Any assignment to an activity (regardless of TaskItemId) means the student
@@ -135,7 +155,8 @@ public class EvaluationService : IEvaluationService
             TaskAverages = taskAverages,
             TaskSums = taskSums,
             ActivityStudentSums = activityStudentSums,
-            AssignedStudentTasks = assignedStudentTasks
+            AssignedStudentTasks = assignedStudentTasks,
+            NumberedTaskCounts = numberedTaskCounts
         };
     }
 
