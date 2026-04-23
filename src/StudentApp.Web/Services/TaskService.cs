@@ -63,7 +63,8 @@ public class TaskService : ITaskService
     public async Task<(bool Success, string? Message)> SetTitleAsync(int id, string title)
     {
         var task = await _db.TaskItems.FindAsync(id);
-        if (task == null) return (false, "Task not found.");
+        if (task == null)
+            return (false, "Úloha nebola nájdená.");
 
         task.Title = title.Trim();
         await _db.SaveChangesAsync();
@@ -73,7 +74,8 @@ public class TaskService : ITaskService
     public async Task<(bool Success, string? Message)> SetDateAsync(int id, DateTime? presentationDate)
     {
         var task = await _db.TaskItems.FindAsync(id);
-        if (task == null) return (false, "Task not found.");
+        if (task == null)
+            return (false, "Úloha nebola nájdená.");
 
         task.PresentationDate = presentationDate;
         await _db.SaveChangesAsync();
@@ -83,7 +85,8 @@ public class TaskService : ITaskService
     public async Task<(bool Success, string? Message)> SetMaxScoreAsync(int id, decimal? maxScore)
     {
         var task = await _db.TaskItems.FindAsync(id);
-        if (task == null) return (false, "Task not found.");
+        if (task == null)
+            return (false, "Úloha nebola nájdená.");
 
         task.MaxScore = maxScore.HasValue ? Math.Round(maxScore.Value, 2) : null;
         await _db.SaveChangesAsync();
@@ -125,7 +128,8 @@ public class TaskService : ITaskService
             .Select(t => (int?)t.ActivityId)
             .FirstOrDefaultAsync();
 
-        if (activityId == null) return (false, null);
+        if (activityId == null)
+            return (false, null);
 
         await _db.PresentationStudents.Where(ps => ps.TaskItemId == id).ExecuteDeleteAsync();
         await _db.Evaluations.Where(e => e.TaskItemId == id).ExecuteDeleteAsync();
@@ -139,7 +143,8 @@ public class TaskService : ITaskService
 
     public async Task BulkDeleteTasksAsync(int[] ids)
     {
-        if (ids == null || ids.Length == 0) return;
+        if (ids == null || ids.Length == 0)
+            return;
         var idSet = ids.ToHashSet();
         await _db.PresentationStudents.Where(ps => idSet.Contains(ps.TaskItemId)).ExecuteDeleteAsync();
         await _db.Evaluations.Where(e => idSet.Contains(e.TaskItemId)).ExecuteDeleteAsync();
@@ -156,7 +161,8 @@ public class TaskService : ITaskService
             .Include(t => t.PresentationStudents)
             .FirstOrDefaultAsync(t => t.Id == taskId && t.IsPresentation);
 
-        if (task == null) return null;
+        if (task == null)
+            return null;
 
         // Exclude students already on this presentation in any role that conflicts:
         // - same role: can't draw twice for the same role
@@ -235,8 +241,8 @@ public class TaskService : ITaskService
             newAssignments.Add(new PresentationStudent
             {
                 TaskItemId = tasks[i % tasks.Count].Id,
-                StudentId  = studentIds[i],
-                Role       = PresentationRole.Presentee
+                StudentId = studentIds[i],
+                Role = PresentationRole.Presentee
             });
         }
 

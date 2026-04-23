@@ -73,7 +73,8 @@ public class ActivityService : IActivityService
     {
         var group = await _db.Groups.Where(g => g.Id == groupId && !g.IsArchived)
             .Select(g => new { g.Id, g.Name }).FirstOrDefaultAsync();
-        if (group == null) return null;
+        if (group == null)
+            return null;
         return (group.Id, group.Name);
     }
 
@@ -98,7 +99,8 @@ public class ActivityService : IActivityService
     public async Task<Activity?> UpdateActivityAsync(int id, string name, string? description)
     {
         var activity = await _db.Activities.FindAsync(id);
-        if (activity == null) return null;
+        if (activity == null)
+            return null;
 
         activity.Name = name.Trim();
         activity.Description = description?.Trim();
@@ -116,7 +118,8 @@ public class ActivityService : IActivityService
             .AsSplitQuery()
             .FirstOrDefaultAsync(a => a.Id == id);
 
-        if (activity == null) return null;
+        if (activity == null)
+            return null;
 
         var activeStudentCount = activity.Group.Students.Count(s => s.IsActive);
         var assignedStudentCount = activity.Assignments.Select(a => a.StudentId).Distinct().Count();
@@ -211,17 +214,18 @@ public class ActivityService : IActivityService
     {
         var activity = await _db.Activities.FindAsync(id);
         if (activity == null)
-            return (false, "Activity not found.");
+            return (false, "Aktivita nebola nájdená.");
 
         activity.IsArchived = true;
         await _db.SaveChangesAsync();
-        return (true, $"Activity '{activity.Name}' archived.");
+        return (true, $"Aktivita '{activity.Name}' bola archivovaná.");
     }
 
     public async Task<(bool Exists, bool Deleted)> DeleteActivityAsync(int id)
     {
         var exists = await _db.Activities.AnyAsync(a => a.Id == id);
-        if (!exists) return (false, false);
+        if (!exists)
+            return (false, false);
 
         var taskIds = await _db.TaskItems.Where(t => t.ActivityId == id).Select(t => t.Id).ToListAsync();
         var attrIds = await _db.ActivityAttributes.Where(a => a.ActivityId == id).Select(a => a.Id).ToListAsync();
@@ -260,7 +264,8 @@ public class ActivityService : IActivityService
             .Include(a => a.Group).ThenInclude(g => g.Students)
             .FirstOrDefaultAsync(a => a.Id == activityId);
 
-        if (activity == null) return null;
+        if (activity == null)
+            return null;
 
         var assignedToThis = await _db.Assignments
             .Where(a => a.ActivityId == activityId)
@@ -293,7 +298,8 @@ public class ActivityService : IActivityService
             .Include(a => a.Group).ThenInclude(g => g.Students)
             .FirstOrDefaultAsync(a => a.Id == activityId);
 
-        if (activity == null) return null;
+        if (activity == null)
+            return null;
 
         var allStudentNames = activity.Group.Students
             .Where(s => s.IsActive)
@@ -312,7 +318,8 @@ public class ActivityService : IActivityService
                     .ThenInclude(g => g.Students)
             .FirstOrDefaultAsync(t => t.Id == taskId);
 
-        if (task == null) return null;
+        if (task == null)
+            return null;
 
         var allStudentNames = task.Activity.Group.Students
             .Where(s => s.IsActive)
@@ -331,14 +338,14 @@ public class ActivityService : IActivityService
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (source == null)
-            return (false, null, "Activity not found.");
+            return (false, null, "Aktivita nebola nájdená.");
 
         var copy = new Activity
         {
-            Name        = source.Name + " (copy)",
+            Name = source.Name + " (copy)",
             Description = source.Description,
-            GroupId     = source.GroupId,
-            CreatedAt   = DateTime.UtcNow
+            GroupId = source.GroupId,
+            CreatedAt = DateTime.UtcNow
         };
 
         var taskIdMap = new Dictionary<int, TaskItem>();
@@ -346,11 +353,11 @@ public class ActivityService : IActivityService
         {
             var taskCopy = new TaskItem
             {
-                Title            = t.Title,
-                IsPresentation   = t.IsPresentation,
-                IsNumberedTask   = t.IsNumberedTask,
+                Title = t.Title,
+                IsPresentation = t.IsPresentation,
+                IsNumberedTask = t.IsNumberedTask,
                 PresentationDate = t.PresentationDate,
-                MaxScore         = t.MaxScore
+                MaxScore = t.MaxScore
             };
             copy.Tasks.Add(taskCopy);
             taskIdMap[t.Id] = taskCopy;
@@ -378,7 +385,8 @@ public class ActivityService : IActivityService
     public async Task<bool> SetActivityAssignmentsAsync(int activityId, int[]? studentIds)
     {
         var activityExists = await _db.Activities.AnyAsync(a => a.Id == activityId);
-        if (!activityExists) return false;
+        if (!activityExists)
+            return false;
 
         var keepIds = studentIds?.ToHashSet() ?? [];
 

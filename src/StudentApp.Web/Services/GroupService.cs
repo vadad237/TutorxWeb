@@ -39,7 +39,7 @@ public class GroupService : IGroupService
                 IsArchived = g.IsArchived,
                 CreatedAt = g.CreatedAt
             })
-            .OrderBy(g => g.Name)
+            .OrderBy(g => g.CreatedAt)
             .ToListAsync();
     }
 
@@ -77,7 +77,8 @@ public class GroupService : IGroupService
     public async Task<Group?> UpdateGroupAsync(int id, string name, string? description)
     {
         var group = await _db.Groups.FindAsync(id);
-        if (group == null) return null;
+        if (group == null)
+            return null;
 
         group.Name = name.Trim();
         group.Description = description?.Trim();
@@ -91,7 +92,8 @@ public class GroupService : IGroupService
             .Include(g => g.Students)
             .FirstOrDefaultAsync(g => g.Id == id);
 
-        if (group == null) return null;
+        if (group == null)
+            return null;
 
         return new GroupDetailsVm
         {
@@ -116,12 +118,13 @@ public class GroupService : IGroupService
     public async Task<bool> DeleteGroupAsync(int id)
     {
         var exists = await _db.Groups.AnyAsync(g => g.Id == id);
-        if (!exists) return false;
+        if (!exists)
+            return false;
 
-        var studentIds  = _db.Students.Where(s => s.GroupId == id).Select(s => s.Id);
+        var studentIds = _db.Students.Where(s => s.GroupId == id).Select(s => s.Id);
         var activityIds = _db.Activities.Where(a => a.GroupId == id).Select(a => a.Id);
-        var taskIds     = _db.TaskItems.Where(t => activityIds.Contains(t.ActivityId)).Select(t => t.Id);
-        var attrIds     = _db.ActivityAttributes.Where(a => activityIds.Contains(a.ActivityId)).Select(a => a.Id);
+        var taskIds = _db.TaskItems.Where(t => activityIds.Contains(t.ActivityId)).Select(t => t.Id);
+        var attrIds = _db.ActivityAttributes.Where(a => activityIds.Contains(a.ActivityId)).Select(a => a.Id);
 
         await _db.StudentAttributeValues.Where(v => studentIds.Contains(v.StudentId) || attrIds.Contains(v.ActivityAttributeId)).ExecuteDeleteAsync();
         await _db.PresentationStudents.Where(ps => studentIds.Contains(ps.StudentId) || taskIds.Contains(ps.TaskItemId)).ExecuteDeleteAsync();
@@ -149,21 +152,19 @@ public class GroupService : IGroupService
             .FirstOrDefaultAsync(g => g.Id == id);
 
         if (group == null)
-            return (false, "Group not found.");
-
-        if (group.Activities.Any(a => !a.IsArchived && a.Tasks.Any(t => t.PresentationDate > DateTime.UtcNow)))
-            return (false, "Cannot archive group with future-dated activities.");
+            return (false, "Skupina nebola nájdená.");
 
         group.IsArchived = true;
         await _db.SaveChangesAsync();
 
-        return (true, $"Group '{group.Name}' archived.");
+        return (true, $"Skupina '{group.Name}' bola archivovaná.");
     }
 
     public async Task<bool> UnarchiveGroupAsync(int id)
     {
         var group = await _db.Groups.FirstOrDefaultAsync(g => g.Id == id);
-        if (group == null) return false;
+        if (group == null)
+            return false;
 
         group.IsArchived = false;
         await _db.SaveChangesAsync();

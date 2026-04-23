@@ -20,7 +20,8 @@ public class DrawService : IDrawService
             .Where(s => s.GroupId == groupId && s.IsActive)
             .Select(s => s.Id).ToListAsync();
 
-        if (allActive.Count == 0) throw new InvalidOperationException("No active students.");
+        if (allActive.Count == 0)
+            throw new InvalidOperationException("Žiadni aktívni študenti.");
 
         var currentCycle = await _db.DrawHistories
             .Where(d => d.GroupId == groupId)

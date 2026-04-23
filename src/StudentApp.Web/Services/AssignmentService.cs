@@ -23,7 +23,8 @@ public class AssignmentService : IAssignmentService
     // also spread evenly across that activity's tasks.
     public async Task BulkAssignAsync(int[] activityIds)
     {
-        if (activityIds.Length == 0) return;
+        if (activityIds.Length == 0)
+            return;
 
         var ids = activityIds.ToList();
 
@@ -33,7 +34,8 @@ public class AssignmentService : IAssignmentService
             .Include(a => a.Tasks)
             .ToListAsync();
 
-        if (activities.Count == 0) return;
+        if (activities.Count == 0)
+            return;
 
         activities = activities.OrderBy(_ => Random.Shared.Next()).ToList();
 
@@ -92,7 +94,7 @@ public class AssignmentService : IAssignmentService
             .Include(a => a.Group).ThenInclude(g => g.Students)
             .Include(a => a.Tasks)
             .FirstOrDefaultAsync(a => a.Id == activityId)
-            ?? throw new InvalidOperationException("Activity not found.");
+            ?? throw new InvalidOperationException("Aktivita nebola nájdená.");
 
         var activeStudents = activity.Group.Students
             .Where(s => s.IsActive)
@@ -135,7 +137,7 @@ public class AssignmentService : IAssignmentService
         var activity = await _db.Activities
             .Include(a => a.Group).ThenInclude(g => g.Students)
             .FirstOrDefaultAsync(a => a.Id == activityId)
-            ?? throw new InvalidOperationException("Activity not found.");
+            ?? throw new InvalidOperationException("Aktivita nebola nájdená.");
 
         var activeStudents = activity.Group.Students
             .Where(s => s.IsActive).ToList();
@@ -165,7 +167,7 @@ public class AssignmentService : IAssignmentService
         var activity = await _db.Activities
             .Include(a => a.Group).ThenInclude(g => g.Students)
             .FirstOrDefaultAsync(a => a.Id == activityId)
-            ?? throw new InvalidOperationException("Activity not found.");
+            ?? throw new InvalidOperationException("Aktivita nebola nájdená.");
 
         // Always exclude students already assigned to THIS activity
         var assignedToThis = await _db.Assignments
@@ -234,7 +236,7 @@ public class AssignmentService : IAssignmentService
             .Include(t => t.Activity).ThenInclude(a => a.Assignments).ThenInclude(a => a.Student)
             .Include(t => t.PresentationStudents)
             .FirstOrDefaultAsync(t => t.Id == taskId && t.IsPresentation)
-            ?? throw new InvalidOperationException("Presentation not found.");
+            ?? throw new InvalidOperationException("Prezentácia nebola nájdená.");
 
         // Exclude ALL students already assigned to this presentation in any role:
         // - same role: can't draw twice
