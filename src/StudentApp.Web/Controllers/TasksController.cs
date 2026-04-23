@@ -86,6 +86,16 @@ public class TasksController : Controller
     }
 
     [HttpPost]
+    public async Task<IActionResult> BulkDelete([FromBody] int[] ids)
+    {
+        if (ids == null || ids.Length == 0)
+            return Json(new { success = false, message = "Žiadne položky neboli vybrané." });
+
+        await _taskService.BulkDeleteTasksAsync(ids);
+        return Json(new { success = true });
+    }
+
+    [HttpPost]
     public async Task<IActionResult> AutoAssignNumbered([FromBody] AutoAssignNumberedRequest req)
     {
         if (req.TaskIds == null || req.TaskIds.Length == 0)

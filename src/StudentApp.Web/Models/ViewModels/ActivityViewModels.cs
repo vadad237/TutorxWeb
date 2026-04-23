@@ -10,9 +10,14 @@ public class ActivitySummaryVm
     public string GroupName { get; set; } = null!;
     public int GroupId { get; set; }
     public int TaskCount { get; set; }
+    public int NumberedTaskCount { get; set; }
+    public int OrdinaryTaskCount { get; set; }
+    public int PresentationCount { get; set; }
     public int AssignedCount { get; set; }
     public bool IsArchived { get; set; }
     public List<string> AssignedStudents { get; set; } = [];
+    public List<(int Id, string Name)> AssignedStudentDetails { get; set; } = [];
+    public HashSet<int> StudentsWithNumberedTask { get; set; } = [];
 }
 
 public class ActivityCreateVm

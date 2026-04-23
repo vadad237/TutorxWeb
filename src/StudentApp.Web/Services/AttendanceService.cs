@@ -128,14 +128,16 @@ public class AttendanceService : IAttendanceService
             .ToListAsync();
 
         var dates = attendances
-            .Select(a => a.Date)
+            .Select(a => (a.Date, a.Time))
             .Distinct()
             .OrderByDescending(d => d)
             .Take(30)
             .OrderBy(d => d)
             .ToList();
 
-        var statusMap = attendances.ToDictionary(a => (a.StudentId, a.Date), a => a.Status);
+        var statusMap = attendances
+            .GroupBy(a => (a.StudentId, a.Date, a.Time))
+            .ToDictionary(g => g.Key, g => g.Last().Status);
 
         return new AttendanceHistoryVm
         {

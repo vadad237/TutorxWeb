@@ -26,8 +26,8 @@ public class AttendanceHistoryVm
     public int GroupId { get; set; }
     public string GroupName { get; set; } = null!;
     public List<StudentSummaryVm> Students { get; set; } = [];
-    public List<DateOnly> Dates { get; set; } = [];
-    public Dictionary<(int StudentId, DateOnly Date), AttendanceStatus> StatusMap { get; set; } = [];
+    public List<(DateOnly Date, TimeOnly? Time)> Dates { get; set; } = [];
+    public Dictionary<(int StudentId, DateOnly Date, TimeOnly? Time), AttendanceStatus> StatusMap { get; set; } = [];
 }
 
 public class AttendanceSummaryVm

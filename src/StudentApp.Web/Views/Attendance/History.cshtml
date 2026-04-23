@@ -18,7 +18,13 @@
                     <th>Študent</th>
                     @foreach (var d in Model.Dates)
                     {
-                        <th class="text-center" style="min-width:80px;">@d.ToString("dd.MM.yyyy")</th>
+                        <th class="text-center" style="min-width:80px;">
+                            @d.Date.ToString("dd.MM.yyyy")
+                            @if (d.Time.HasValue)
+                            {
+                                <br /><small>@d.Time.Value.ToString("HH:mm")</small>
+                            }
+                        </th>
                     }
                 </tr>
             </thead>
@@ -29,7 +35,7 @@
                         <td>@s.FullName</td>
                         @foreach (var d in Model.Dates)
                         {
-                            var key = (s.Id, d);
+                            var key = (s.Id, d.Date, d.Time);
                             <td class="text-center">
                                 @if (Model.StatusMap.TryGetValue(key, out var status))
                                 {

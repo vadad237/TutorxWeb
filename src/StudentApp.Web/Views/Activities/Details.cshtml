@@ -33,14 +33,18 @@
 <!-- Assigned Students Section -->
 <div class="card mb-3">
     <div class="card-body">
-        <h5>Priradení študenti</h5>
+        <h5>Priradení študenti (@Model.AssignedStudents.Count)</h5>
         <div class="badge-area mb-2" id="activity-badge-area">
             @if (Model.AssignedStudents.Any())
             {
-                <div class="d-flex flex-wrap gap-1">
+                var studentsWithNumberedTask = Model.NumberedTasks
+                    .SelectMany(t => t.AssignedStudents.Select(s => s.StudentId))
+                    .ToHashSet();
+                <div class="d-flex flex-wrap gap-1 ">
                     @foreach (var s in Model.AssignedStudents)
                     {
-                        <span class="badge bg-info text-dark">@s.FullName</span>
+                        var hasTask = studentsWithNumberedTask.Contains(s.StudentId);
+                        <span class="badge @(hasTask ? "bg-info text-dark" : "bg-secondary")" data-student-id="@s.StudentId">@s.FullName</span>
                     }
                 </div>
             }
@@ -49,6 +53,7 @@
                 <p class="text-muted small mb-0">Žiadni študenti zatiaľ neboli priradení.</p>
             }
         </div>
+       
         <form class="activity-assign-form" id="activityAssignForm" data-activity-id="@Model.Id">
             @Html.AntiForgeryToken()
             <div class="dropdown">
@@ -85,6 +90,17 @@
                 </ul>
             </div>
         </form>
+        @{
+            var studentsWithTask = Model.NumberedTasks
+                .SelectMany(t => t.AssignedStudents.Select(s => s.StudentId))
+                .ToHashSet();
+            var withTaskCount    = Model.AssignedStudents.Count(s => studentsWithTask.Contains(s.StudentId));
+            var withoutTaskCount = Model.AssignedStudents.Count - withTaskCount;
+        }
+        <div class="d-flex flex-wrap gap-3 mb-2 mt-2">
+            <span class="text-muted small"><span class="badge bg-info text-dark me-1">Meno</span>Má priradené zadanie (<span id="countWithTask">@withTaskCount</span>)</span>
+            <span class="text-muted small"><span class="badge bg-secondary me-1">Meno</span>Nemá priradené zadanie (<span id="countWithoutTask">@withoutTaskCount</span>)</span>
+        </div>
     </div>
 </div>
 
@@ -94,11 +110,15 @@
         <div class="d-flex justify-content-between align-items-center mb-2">
             <h5 class="mb-0">Zadania (@Model.NumberedTasks.Count)</h5>
             <div class="d-flex align-items-center gap-2">
-                <span id="numberedTaskSelectionCount" class="text-muted small d-none"></span>
+                <span id="numberedTaskSelectionCount" class="text-muted small d-none"></span>              
                 <button type="button" id="autoAssignNumberedBtn" class="btn btn-sm btn-outline-success" disabled
                         data-activity-id="@Model.Id"
                         @(!Model.AssignedStudents.Any() ? "title=\"Najskôr priraďte študentov k aktivite\"" : "")>
                     <i class="bi bi-shuffle me-1"></i>Auto-priradenie
+                </button>
+                <button type="button" id="deleteSelectedNumberedBtn" class="btn btn-sm btn-outline-danger" disabled
+                        data-activity-id="@Model.Id">
+                    <i class="bi bi-trash"></i>
                 </button>
                 <button type="button" id="addNumberedTasksBtn" class="btn btn-sm btn-primary"
                         data-activity-id="@Model.Id">
@@ -145,7 +165,7 @@
                                     }
                                 </div>
                                 @{
-                                    var taskStudentSource = Model.AssignedStudents.Any() ? Model.AssignedStudents.Select(s => (StudentId: s.StudentId, FullName: s.FullName)) : allStudents.Select(s => (StudentId: s.Id, FullName: s.FullName));
+                                    var taskStudentSource = Model.AssignedStudents.Select(s => (StudentId: s.StudentId, FullName: s.FullName));
                                 }
                                 <div class="dropdown numbered-task-student-dropdown" data-task-id="@t.TaskId" data-badge-area="num-task-badges-@t.TaskId">
                                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
@@ -213,7 +233,10 @@ else
             @foreach (var t in Model.Tasks)
             {
                 <tr>
-                    <td>@t.Title</td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm pres-title-input"
+                               data-id="@t.TaskId" value="@t.Title" maxlength="300" />
+                    </td>
                     <td>
                         <input type="number" class="form-control form-control-sm task-max-score-input"
                                data-id="@t.TaskId"
@@ -249,9 +272,12 @@ else
 <div class="d-flex justify-content-between align-items-center mb-2">
     <h4 class="mb-0">Prezentácie (@Model.Presentations.Count)</h4>
     <div id="presSelectionToolbar" class="d-flex align-items-center gap-2">
-        <span id="presSelectionCount" class="text-muted small"></span>
+        <span id="presSelectionCount" class="text-muted small"></span>       
         <button type="button" class="btn btn-sm btn-outline-secondary" id="presDrawBtn" disabled>
             <i class="bi bi-dice-3 me-1"></i>Žrebovanie
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger" id="presDeleteSelectedBtn" disabled>
+            <i class="bi bi-trash"></i>
         </button>
     </div>
 </div>
@@ -313,29 +339,26 @@ else
                                 <span class="text-muted small">Žiadni</span>
                             }
                         </div>
-                        @if (Model.AssignedStudents.Any())
-                        {
-                            <div class="dropdown pres-role-dropdown" data-task-id="@p.TaskId" data-role="0" data-badge-area="pres-presentee-badges-@p.TaskId">
-                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                                    <i class="bi bi-people"></i>
-                                </button>
-                                <ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">
-                                    @foreach (var s in Model.AssignedStudents)
-                                    {
-                                        var isPresentee = p.PresenteeStudents.Any(ps => ps.StudentId == s.StudentId);
-                                        <li>
-                                            <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">
-                                                <input class="form-check-input mt-0 flex-shrink-0 pres-student-cb"
-                                                       type="checkbox" value="@s.StudentId" data-name="@s.FullName"
-                                                       @(isPresentee ? "checked" : "") />
-                                                @s.FullName
-                                            </label>
-                                        </li>
-                                    }
-                                </ul>
-                            </div>
-                        }
+                        <div class="dropdown pres-role-dropdown" data-task-id="@p.TaskId" data-role="0" data-badge-area="pres-presentee-badges-@p.TaskId">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                <i class="bi bi-people"></i>
+                            </button>
+                            <ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">
+                                @foreach (var s in Model.AssignedStudents)
+                                {
+                                    var isPresentee = p.PresenteeStudents.Any(ps => ps.StudentId == s.StudentId);
+                                    <li>
+                                        <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">
+                                            <input class="form-check-input mt-0 flex-shrink-0 pres-student-cb"
+                                                   type="checkbox" value="@s.StudentId" data-name="@s.FullName"
+                                                   @(isPresentee ? "checked" : "") />
+                                            @s.FullName
+                                        </label>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
                     </div>
                 </td>
                 <td>
@@ -353,29 +376,26 @@ else
                                 <span class="text-muted small">Žiadni</span>
                             }
                         </div>
-                        @if (Model.AssignedStudents.Any())
-                        {
-                            <div class="dropdown pres-role-dropdown" data-task-id="@p.TaskId" data-role="1" data-badge-area="pres-sub-badges-@p.TaskId">
-                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                                    <i class="bi bi-people"></i>
-                                </button>
-                                <ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">
-                                    @foreach (var s in Model.AssignedStudents)
-                                    {
-                                        var isSub = p.SubstitutionStudents.Any(ps => ps.StudentId == s.StudentId);
-                                        <li>
-                                            <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">
-                                                <input class="form-check-input mt-0 flex-shrink-0 pres-student-cb"
-                                                       type="checkbox" value="@s.StudentId" data-name="@s.FullName"
-                                                       @(isSub ? "checked" : "") />
-                                                @s.FullName
-                                            </label>
-                                        </li>
-                                    }
-                                </ul>
-                            </div>
-                        }
+                        <div class="dropdown pres-role-dropdown" data-task-id="@p.TaskId" data-role="1" data-badge-area="pres-sub-badges-@p.TaskId">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                <i class="bi bi-people"></i>
+                            </button>
+                            <ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">
+                                @foreach (var s in Model.AssignedStudents)
+                                {
+                                    var isSub = p.SubstitutionStudents.Any(ps => ps.StudentId == s.StudentId);
+                                    <li>
+                                        <label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">
+                                            <input class="form-check-input mt-0 flex-shrink-0 pres-student-cb"
+                                                   type="checkbox" value="@s.StudentId" data-name="@s.FullName"
+                                                   @(isSub ? "checked" : "") />
+                                            @s.FullName
+                                        </label>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
                     </div>
                 </td>
                 <td>
@@ -417,11 +437,7 @@ else
     </div>
 </div>
 
-@if (!Model.AssignedStudents.Any())
-{
-    <div class="alert alert-info">Najskôr priraďte študentov k aktivite, aby ste mohli používať tabuľku Ostatné.</div>
-}
-else
+@if (Model.OtherAttributes.Any())
 {
     <div class="table-responsive">
         <table class="table table-bordered table-sm align-middle" id="otherTable">
@@ -495,11 +511,10 @@ else
             </tbody>
         </table>
     </div>
-
-    @if (!Model.OtherAttributes.Any())
-    {
-        <div class="alert alert-info">Žiadne atribúty. Pridajte jeden vyššie.</div>
-    }
+}
+else
+{
+    <div class="alert alert-info">Žiadne atribúty. Pridajte nový atribút pomocou poľa vyššie.</div>
 }
 
 <!-- Manage States Modal -->

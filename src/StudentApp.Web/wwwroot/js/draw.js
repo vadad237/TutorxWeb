@@ -27,16 +27,20 @@ document.addEventListener('DOMContentLoaded', function () {
     ];
 
     // ── Pool builder ──────────────────────────────────────────────────────────
-    function buildPool() {
-        var pool = allNames.slice();
-        while (pool.length < 20) pool = pool.concat(allNames);
+    function buildPool(names) {
+        var src = (names && names.length > 0) ? names : allNames;
+        var pool = src.slice();
+        while (pool.length < 20) pool = pool.concat(src);
         return pool.sort(function () { return Math.random() - 0.5; });
     }
 
     // ── Global toolbar state ──────────────────────────────────────────────────
     function updateAllButtons() {
-        var hasValid = Array.from(cardsGrid.querySelectorAll('.card-item-select'))
-            .some(function (sel) { return sel.value !== ''; });
+        var hasValid = Array.from(cardsGrid.children).some(function (col) {
+            var sel = col.querySelector('.card-item-select');
+            var cnt = col.querySelector('.card-count-input');
+            return sel && sel.value !== '' && cnt && parseInt(cnt.max || '0', 10) > 0;
+        });
         if (drawAllBtn) drawAllBtn.disabled = isDrawingAll || !hasValid;
 
         Array.from(cardsGrid.children).forEach(function (col) {
@@ -59,11 +63,13 @@ document.addEventListener('DOMContentLoaded', function () {
             : 'Zahrnúť študentov už priradených k iným aktivitám';
         var emptySelectText = isPresentation ? 'Najskôr vyberte prezentáciu' : 'Najskôr vyberte aktivitu';
 
-        var opts = '<option value="">' + placeholderText + '</option>';
+        var effectiveId = preselectedId || (items.length > 0 ? items[0].Id : null);
+
+        var opts = '';
         items.forEach(function (item) {
             var itemId = item.Id;
             var itemName = isPresentation ? (item.Title + ' (' + item.ActivityName + ')') : item.Name;
-            var sel = (preselectedId && String(itemId) === String(preselectedId))
+            var sel = (effectiveId && String(itemId) === String(effectiveId))
                 ? ' selected' : '';
             opts += '<option value="' + itemId + '"' + sel + '>'
                  + escapeHtml(itemName) + '</option>';
@@ -71,9 +77,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         var preselectedName = '';
         var preselectedActId = null;
-        if (preselectedId) {
+        if (effectiveId) {
             var found = items.find(function (item) {
-                return String(item.Id) === String(preselectedId);
+                return String(item.Id) === String(effectiveId);
             });
             if (found) {
                 preselectedName = isPresentation ? found.Title : found.Name;
@@ -123,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function () {
           +         '<span class="badge bg-secondary card-eligible-badge" style="display:none"></span>'
           +       '</div>'
           +       '<div class="form-check mb-1">'
-          +         '<input class="form-check-input card-include-assigned" type="checkbox" />'
+          +         '<input class="form-check-input card-include-assigned" type="checkbox" checked />'
           +         '<label class="form-check-label small text-muted">'
           +           includeLabel
           +         '</label>'
@@ -132,6 +138,7 @@ document.addEventListener('DOMContentLoaded', function () {
           +            'style="max-height:110px;overflow-y:auto;min-height:34px;background:#f8f9fa">'
           +         '<span class="text-muted small fst-italic">' + emptySelectText + '</span>'
           +       '</div>'
+          +       '<div class="card-both-warning" style="display:none"></div>'
           +     '</div>'
 
           // Count input
@@ -147,7 +154,6 @@ document.addEventListener('DOMContentLoaded', function () {
           +     '<div class="slot-outer slot-outer-compact">'
           +       '<div class="slot-display card-slot-display">'
           +         '<span class="slot-name card-slot-name" style="font-size:1.1rem;color:#6c757d">'
-          +           escapeHtml(preselectedName || (isPresentation ? 'Vyberte prezentáciu' : 'Vyberte aktivitu'))
           +         '</span>'
           +       '</div>'
           +     '</div>'
@@ -184,6 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var roleSelect        = wrapper.querySelector('.card-role-select'); // null for activity cards
         var detailLink       = wrapper.querySelector('.card-detail-link');
         var detailLinkText   = wrapper.querySelector('.card-detail-link-text');
+        var bothWarning      = wrapper.querySelector('.card-both-warning');
         var isCardDrawing    = false;
 
         // ── Detail link updater ───────────────────────────────────────────────
@@ -206,7 +213,20 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         var cardType         = type;
 
-        // While typing: only clamp the upper bound so the field can be cleared/retyped freely
+        function setBothWarning(total) {
+            if (total !== null) {
+                bothWarning.innerHTML = '<span class="text-danger small fw-semibold">'
+                    + '<i class="bi bi-exclamation-triangle-fill me-1"></i>'
+                    + 'Nedostatok študentov. Na žrebovanie oboch rolí sú potrební aspoň 2 oprávnení študenti (momentálne: ' + total + ').'
+                    + '</span>';
+                bothWarning.style.display = '';
+            } else {
+                bothWarning.innerHTML = '';
+                bothWarning.style.display = 'none';
+            }
+        }
+
+        // While typing: only clamp the upper bound
         countInput.addEventListener('input', function () {
             var max = parseInt(this.max, 10);
             var val = parseInt(this.value, 10);
@@ -231,19 +251,43 @@ document.addEventListener('DOMContentLoaded', function () {
         // ── Eligible list renderer ────────────────────────────────────────────
         function syncEligibleCount() {
             var remaining = eligibleList.querySelectorAll('.eligible-tag').length;
-            eligibleBadge.textContent = remaining;
-            eligibleBadge.className = 'badge card-eligible-badge '
-                + (remaining > 0 ? 'bg-primary' : 'bg-secondary');
-            countInput.max = remaining;
-            countMax.textContent = '/ ' + remaining;
-            if (remaining === 0) {
-                countInput.disabled = true;
-                countInput.value = 0;
-                eligibleList.innerHTML =
-                    '<span class="text-muted small fst-italic">Všetci študenti sú už priradení.</span>';
+            var isBothNow = cardType === 'presentation' && roleSelect && roleSelect.value === 'both';
+
+            if (isBothNow) {
+                var maxDrawable = Math.floor(remaining / 2);
+                eligibleBadge.textContent = remaining;
+                eligibleBadge.className = 'badge card-eligible-badge '
+                    + (maxDrawable > 0 ? 'bg-primary' : 'bg-secondary');
+                eligibleBadge.style.display = '';
+
+                if (maxDrawable === 0) {
+                    setBothWarning(remaining);
+                    countInput.disabled = true;
+                    countInput.max = 0;
+                    countMax.textContent = '/ 0 (P:0, N:0)';
+                } else {
+                    setBothWarning(null);
+                    countInput.max = maxDrawable;
+                    countInput.disabled = false;
+                    if (parseInt(countInput.value, 10) > maxDrawable) countInput.value = maxDrawable;
+                    countMax.textContent = '/ ' + maxDrawable + ' (P:' + maxDrawable + ', N:' + maxDrawable + ')';
+                }
             } else {
-                countInput.disabled = false;
-                if (parseInt(countInput.value, 10) > remaining) countInput.value = remaining;
+                setBothWarning(null);
+                eligibleBadge.textContent = remaining;
+                eligibleBadge.className = 'badge card-eligible-badge '
+                    + (remaining > 0 ? 'bg-primary' : 'bg-secondary');
+                countInput.max = remaining;
+                countMax.textContent = '/ ' + remaining;
+                if (remaining === 0) {
+                    countInput.disabled = true;
+                    countInput.value = 0;
+                    eligibleList.innerHTML =
+                        '<span class="text-muted small fst-italic">Všetci študenti sú už priradení.</span>';
+                } else {
+                    countInput.disabled = false;
+                    if (parseInt(countInput.value, 10) > remaining) countInput.value = remaining;
+                }
             }
             wrapper._updateCardBtn();
             updateAllButtons();
@@ -279,11 +323,50 @@ document.addEventListener('DOMContentLoaded', function () {
             wrapper._updateCardBtn();
 
             var include = includeAssignedCb.checked ? '&includeAlreadyAssigned=true' : '';
+            var isBoth = cardType === 'presentation' && roleSelect && roleSelect.value === 'both';
+
+            if (isBoth) {
+                // Fetch role=0 pool (the shared eligible pool for "both").
+                // Max drawable = floor(pool / 2): the pool is split evenly between presentee and substitution.
+                var bothUrl = '/Tasks/GetEligiblePresentationStudents?taskId=' + itemId + include + '&role=0';
+                return fetch(bothUrl)
+                    .then(function (r) { return r.json(); })
+                    .then(function (students) {
+                        var total = students.length;
+                        var maxDrawable = Math.floor(total / 2);
+
+                        eligibleBadge.textContent = total;
+                        eligibleBadge.style.display = '';
+                        eligibleBadge.className = 'badge card-eligible-badge '
+                            + (maxDrawable > 0 ? 'bg-primary' : 'bg-secondary');
+
+                        if (maxDrawable === 0) {
+                            renderEligibleStudents(students);
+                            setBothWarning(total);
+                            countInput.disabled = true;
+                            countInput.max = 0;
+                            countMax.textContent = '/ 0 (P:0, N:0)';
+                        } else {
+                            setBothWarning(null);
+                            renderEligibleStudents(students);
+                            countInput.max = maxDrawable;
+                            countInput.value = Math.min(parseInt(countInput.value, 10) || 1, maxDrawable);
+                            countInput.disabled = false;
+                            countMax.textContent = '/ ' + maxDrawable + ' (P:' + maxDrawable + ', N:' + maxDrawable + ')';
+                        }
+                        wrapper._updateCardBtn();
+                        updateAllButtons();
+                    }).catch(function () {
+                        eligibleList.innerHTML =
+                            '<span class="text-danger small">Nepodarilo sa načítať študentov.</span>';
+                        countInput.disabled = true;
+                        wrapper._updateCardBtn();
+                    });
+            }
+
             var roleParam = '';
             if (cardType === 'presentation' && roleSelect) {
-                var rv = roleSelect.value;
-                // For 'both', load eligible for presentee (role=0) — the union covers all assigned students
-                roleParam = '&role=' + (rv === 'both' ? '0' : rv);
+                roleParam = '&role=' + roleSelect.value;
             }
             var url = cardType === 'presentation'
                 ? '/Tasks/GetEligiblePresentationStudents?taskId=' + itemId + include + roleParam
@@ -291,6 +374,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return fetch(url)
                 .then(function (r) { return r.json(); })
                 .then(function (students) {
+                    setBothWarning(null);
                     eligibleBadge.textContent = students.length;
                     eligibleBadge.style.display = '';
                     eligibleBadge.className = 'badge card-eligible-badge '
@@ -341,9 +425,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // ── Item select change ─────────────────────────────────────────────────
         actSel.addEventListener('change', function () {
             if (!this.value) {
-                slotName.style.color    = '#6c757d';
-                slotName.style.fontSize = '1.1rem';
-                slotName.textContent    = cardType === 'presentation' ? 'Vyberte prezentáciu' : 'Vyberte aktivitu';
+                slotName.style.color    = '';
+                slotName.style.fontSize = '';
+                slotName.textContent    = '';
                 wrapper.querySelector('.card-slot-display').classList.remove('spinning', 'locked');
                 eligibleList.innerHTML  =
                     '<span class="text-muted small fst-italic">' + emptySelectText + '</span>';
@@ -382,10 +466,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         cardsGrid.appendChild(wrapper);
 
-        // Auto-load eligible students if pre-selected
-        if (preselectedId) {
-            loadEligible(parseInt(preselectedId, 10));
-            updateDetailLink(preselectedId);
+        // Auto-load eligible students for the selected item
+        if (effectiveId) {
+            loadEligible(parseInt(effectiveId, 10));
+            updateDetailLink(effectiveId);
         }
 
         updateAllButtons();
@@ -393,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ── Animation: reveal one name on a specific card ─────────────────────────
-    function revealOneOnCard(cardEl, name, index, total) {
+    function revealOneOnCard(cardEl, name, index, total, eligibleNames) {
         return new Promise(function (resolve) {
             var slotDisplay = cardEl.querySelector('.card-slot-display');
             var slotName    = cardEl.querySelector('.card-slot-name');
@@ -408,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function () {
             slotDisplay.classList.remove('locked');
             slotDisplay.classList.add('spinning');
 
-            var pool      = buildPool();
+            var pool      = buildPool(eligibleNames);
             var poolIdx   = 0;
             var schedIdx  = 0;
             var phaseEnd  = Date.now() + schedule[0][0];
@@ -467,10 +551,14 @@ document.addEventListener('DOMContentLoaded', function () {
         var includeAssigned = includeAssignedCb && includeAssignedCb.checked;
         var roleValue = (roleSel && cType === 'presentation') ? roleSel.value : null;
 
-        // Collect the IDs of students still visible in the eligible list
+        // Collect the IDs and names of students still visible in the eligible list
         var eligibleListEl = cardEl.querySelector('.card-eligible-list');
-        var allowedIds = Array.from(eligibleListEl.querySelectorAll('.eligible-tag[data-student-id]'))
-            .map(function (tag) { return tag.dataset.studentId; });
+        var eligibleTags = Array.from(eligibleListEl.querySelectorAll('.eligible-tag[data-student-id]'));
+        var allowedIds = eligibleTags.map(function (tag) { return tag.dataset.studentId; });
+        var eligibleNames = eligibleTags.map(function (tag) {
+            // The tag text is fullName + the remove button; grab just the text node
+            return tag.firstChild ? tag.firstChild.textContent.trim() : '';
+        }).filter(Boolean);
 
         resultsList.innerHTML     = '';
         completeMsg.style.opacity = '0';
@@ -515,7 +603,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 resultsList.appendChild(labelP);
 
                 for (var i = 0; i < dataP.drawnNames.length; i++) {
-                    await revealOneOnCard(cardEl, dataP.drawnNames[i], i, dataP.drawnNames.length);
+                    await revealOneOnCard(cardEl, dataP.drawnNames[i], i, dataP.drawnNames.length, eligibleNames);
                 }
 
                 // Reset slot drum for the substitution draw
@@ -555,8 +643,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     labelS.innerHTML = '<small class="fw-semibold text-warning">Náhradník</small>';
                     resultsList.appendChild(labelS);
 
+                    var subEligibleNames = reloadedSubs.map(function (s) { return s.fullName || ''; }).filter(Boolean);
                     for (var j = 0; j < dataS.drawnNames.length; j++) {
-                        await revealOneOnCard(cardEl, dataS.drawnNames[j], j, dataS.drawnNames.length);
+                        await revealOneOnCard(cardEl, dataS.drawnNames[j], j, dataS.drawnNames.length, subEligibleNames);
                     }
                 } else {
                     var labelSFail = document.createElement('div');
@@ -578,7 +667,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 for (var k = 0; k < data.drawnNames.length; k++) {
-                    await revealOneOnCard(cardEl, data.drawnNames[k], k, data.drawnNames.length);
+                    await revealOneOnCard(cardEl, data.drawnNames[k], k, data.drawnNames.length, eligibleNames);
                 }
             }
 
@@ -598,7 +687,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var validCards = Array.from(cardsGrid.children).filter(function (col) {
                 var sel = col.querySelector('.card-item-select');
-                return sel && sel.value;
+                var cnt = col.querySelector('.card-count-input');
+                return sel && sel.value && cnt && parseInt(cnt.max || '0', 10) > 0;
             });
 
             // Run cards sequentially so each draw completes and eligible lists

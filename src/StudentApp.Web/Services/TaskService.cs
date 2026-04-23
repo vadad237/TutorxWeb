@@ -137,6 +137,18 @@ public class TaskService : ITaskService
         return (true, activityId);
     }
 
+    public async Task BulkDeleteTasksAsync(int[] ids)
+    {
+        if (ids == null || ids.Length == 0) return;
+        var idSet = ids.ToHashSet();
+        await _db.PresentationStudents.Where(ps => idSet.Contains(ps.TaskItemId)).ExecuteDeleteAsync();
+        await _db.Evaluations.Where(e => idSet.Contains(e.TaskItemId)).ExecuteDeleteAsync();
+        await _db.Assignments.Where(a => a.TaskItemId.HasValue && idSet.Contains(a.TaskItemId.Value)).ExecuteDeleteAsync();
+        await _db.DrawHistories.Where(d => d.TaskItemId != null && idSet.Contains(d.TaskItemId.Value))
+            .ExecuteUpdateAsync(s => s.SetProperty(d => d.TaskItemId, (int?)null));
+        await _db.TaskItems.Where(t => idSet.Contains(t.Id)).ExecuteDeleteAsync();
+    }
+
     public async Task<List<EligibleStudentDto>?> GetEligiblePresentationStudentsAsync(int taskId, bool includeAlreadyAssigned, PresentationRole? role = null)
     {
         var task = await _db.TaskItems
@@ -160,7 +172,7 @@ public class TaskService : ITaskService
         if (!includeAlreadyAssigned)
         {
             var query = _db.PresentationStudents
-                .Where(ps => ps.TaskItem.ActivityId == task.ActivityId);
+                .Where(ps => ps.TaskItem.ActivityId == task.ActivityId && ps.TaskItem.IsPresentation);
             if (role.HasValue)
                 query = query.Where(ps => ps.Role == role.Value);
 

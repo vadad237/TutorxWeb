@@ -12,6 +12,7 @@ public interface ITaskService
     Task SetPresentationStudentsAsync(int taskId, int[]? studentIds);
     Task SetPresentationStudentsByRoleAsync(int taskId, int[]? studentIds, PresentationRole role);
     Task<(bool Found, int? ActivityId)> DeleteTaskAsync(int id);
+    Task BulkDeleteTasksAsync(int[] ids);
     Task<List<EligibleStudentDto>?> GetEligiblePresentationStudentsAsync(int taskId, bool includeAlreadyAssigned, PresentationRole? role = null);
     Task<(bool Success, string Message)> AutoAssignNumberedTasksAsync(int activityId, int[] taskIds);
 }

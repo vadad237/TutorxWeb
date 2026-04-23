@@ -96,7 +96,7 @@ public class CustomExportService : ICustomExportService
         {
             activityList = await _db.Activities
                 .Where(a => a.GroupId == request.GroupId && !a.IsArchived)
-                .OrderBy(a => a.Name)
+                .OrderBy(a => a.CreatedAt)
                 .ToListAsync();
 
             var assignments = await _db.Assignments
@@ -115,14 +115,17 @@ public class CustomExportService : ICustomExportService
         List<TaskItem> tasks = new();
         List<TaskItem> taskPresentations = new();
         Dictionary<(int studentId, int taskId), Evaluation> evalMap = new();
+        // numberedTaskMap[(studentId, activityId)] = sorted list of numeric-task titles
+        Dictionary<(int studentId, int activityId), List<string>> numberedTaskMap = new();
         if (request.IncludeTasks)
         {
             tasks = await _db.TaskItems
                 .Include(t => t.Activity)
                 .Where(t => !t.IsPresentation
+                         && !t.IsNumberedTask
                          && t.Activity.GroupId == request.GroupId
                          && !t.Activity.IsArchived)
-                .OrderBy(t => t.Activity.Name).ThenBy(t => t.Title)
+                .OrderBy(t => t.CreatedAt)
                 .ToListAsync();
 
             taskPresentations = await _db.TaskItems
@@ -130,7 +133,7 @@ public class CustomExportService : ICustomExportService
                 .Where(t => t.IsPresentation
                          && t.Activity.GroupId == request.GroupId
                          && !t.Activity.IsArchived)
-                .OrderBy(t => t.Activity.Name).ThenBy(t => t.PresentationDate).ThenBy(t => t.Title)
+                .OrderBy(t => t.CreatedAt).ThenBy(t => t.PresentationDate)
                 .ToListAsync();
 
             var evals = await _db.Evaluations
@@ -139,12 +142,31 @@ public class CustomExportService : ICustomExportService
 
             evalMap = evals.ToDictionary(e => (e.StudentId, e.TaskItemId));
 
+            // Load numbered-task assignments for "Zadania" column
+            // Numeric task assignments are stored in PresentationStudents (Role=Presentee, IsNumberedTask=true)
+            var numberedTaskAssignments = await _db.PresentationStudents
+                .Include(ps => ps.TaskItem)
+                .Where(ps => ps.TaskItem.IsNumberedTask
+                          && ps.TaskItem.Activity.GroupId == request.GroupId
+                          && !ps.TaskItem.Activity.IsArchived
+                          && ps.Role == PresentationRole.Presentee)
+                .Select(ps => new { ps.StudentId, ps.TaskItem.ActivityId, ps.TaskItem.Title })
+                .ToListAsync();
+
+            foreach (var asgn in numberedTaskAssignments)
+            {
+                var key = (asgn.StudentId, asgn.ActivityId);
+                if (!numberedTaskMap.TryGetValue(key, out var list))
+                    numberedTaskMap[key] = list = new List<string>();
+                list.Add(asgn.Title);
+            }
+
             // Collect all activity IDs present in either list
             var allActivityIds = tasks.Select(t => t.ActivityId)
                 .Union(taskPresentations.Select(t => t.ActivityId))
                 .Distinct()
-                .OrderBy(id => tasks.FirstOrDefault(t => t.ActivityId == id)?.Activity.Name
-                             ?? taskPresentations.First(t => t.ActivityId == id).Activity.Name)
+                .OrderBy(id => tasks.FirstOrDefault(t => t.ActivityId == id)?.Activity.CreatedAt
+                             ?? taskPresentations.First(t => t.ActivityId == id).Activity.CreatedAt)
                 .ToList();
 
             foreach (var actId in allActivityIds)
@@ -170,6 +192,7 @@ public class CustomExportService : ICustomExportService
                 }
                 if (request.IncludeTasksSummary)
                 {
+                    headers.Add(($"{actName} › Zadania", "tasks-numbered"));
                     headers.Add(($"{actName} › Celkom", "tasks-sum"));
                 }
             }
@@ -188,7 +211,7 @@ public class CustomExportService : ICustomExportService
             var attrs = await _db.ActivityAttributes
                 .Include(a => a.Activity)
                 .Where(a => a.Activity.GroupId == request.GroupId && !a.Activity.IsArchived)
-                .OrderBy(a => a.Activity.Name).ThenBy(a => a.Id)
+                .OrderBy(a => a.Activity.CreatedAt).ThenBy(a => a.Id)
                 .ToListAsync();
 
             var values = await _db.StudentAttributeValues
@@ -219,7 +242,7 @@ public class CustomExportService : ICustomExportService
                 .Where(t => t.IsPresentation
                          && t.Activity.GroupId == request.GroupId
                          && !t.Activity.IsArchived)
-                .OrderBy(t => t.Activity.Name).ThenBy(t => t.Title)
+                .OrderBy(t => t.Activity.CreatedAt)
                 .ToListAsync();
 
             foreach (var p in presentations)
@@ -287,8 +310,8 @@ public class CustomExportService : ICustomExportService
                 var allActivityIds = tasks.Select(t => t.ActivityId)
                     .Union(taskPresentations.Select(t => t.ActivityId))
                     .Distinct()
-                    .OrderBy(id => tasks.FirstOrDefault(t => t.ActivityId == id)?.Activity.Name
-                                 ?? taskPresentations.First(t => t.ActivityId == id).Activity.Name)
+                    .OrderByDescending(id => tasks.FirstOrDefault(t => t.ActivityId == id)?.Activity.CreatedAt
+                                 ?? taskPresentations.First(t => t.ActivityId == id).Activity.CreatedAt)
                     .ToList();
 
                 foreach (var actId in allActivityIds)
@@ -337,7 +360,13 @@ public class CustomExportService : ICustomExportService
                     }
 
                     if (request.IncludeTasksSummary)
+                    {
+                        var numberedTitles = numberedTaskMap.GetValueOrDefault((student.Id, actId));
+                        row.Add(numberedTitles is { Count: > 0 }
+                            ? string.Join(", ", numberedTitles.OrderBy(t => t))
+                            : "");
                         row.Add(hasAny ? actSum.ToString("F2") : "");
+                    }
                     grandTotal += actSum;
                     if (hasAny) hasGrandAny = true;
                 }
@@ -391,6 +420,7 @@ public class CustomExportService : ICustomExportService
         { "att-sum",       "#0e3a50" },  // darker teal — attendance summary
         { "activities",    "#1e8449" },  // dark green
         { "tasks",         "#6c3483" },  // dark purple
+        { "tasks-numbered","#4a4a8a" },  // indigo — numeric task assignments
         { "tasks-pres",    "#7d3c00" },  // dark brown — presentation scores
         { "tasks-sum",     "#4a235a" },  // deeper purple — activity total
         { "tasks-total",   "#2d1436" },  // darkest purple — grand total
@@ -519,6 +549,7 @@ public class CustomExportService : ICustomExportService
             { "attendance",    "Dochádzka — P = Prítomný  |  N = Neprítomný  |  O = Ospravedlnený" },
             { "activities",    "Aktivity — ✓ znamená, že študent je priradený k danej aktivite" },
             { "tasks",         "Úlohy a hodnotenia — číselné skóre za každú úlohu, prázdne ak nie je hodnotené" },
+            { "tasks-numbered","Zadania — čísla priradených číslovaných úloh na študenta" },
             { "tasks-pres",    "Prezentácie (skóre) — číselné skóre za prezentáciu, prázdne ak nie je hodnotené" },
             { "tasks-sum",     "Celkom za aktivitu — súčet skóre úloh a prezentácií v rámci aktivity" },
             { "tasks-total",   "Celkom (všetky aktivity) — súčet všetkých skóre za všetky aktivity" },

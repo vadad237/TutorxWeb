@@ -16,28 +16,56 @@ public class ActivityService : IActivityService
 
     public async Task<List<ActivitySummaryVm>> GetActivitySummariesAsync(int groupId)
     {
-        var rawActivities = await _db.Activities
+        var projected = await _db.Activities
             .Where(a => !a.IsArchived && a.GroupId == groupId)
-            .Include(a => a.Group)
-            .Include(a => a.Tasks)
-            .Include(a => a.Assignments).ThenInclude(asgn => asgn.Student)
-            .OrderBy(a => a.Name)
+            .OrderBy(a => a.CreatedAt)
+            .Select(a => new
+            {
+                a.Id,
+                a.Name,
+                GroupName = a.Group.Name,
+                a.GroupId,
+                a.IsArchived,
+                NumberedTaskCount = a.Tasks.Count(t => t.IsNumberedTask),
+                OrdinaryTaskCount = a.Tasks.Count(t => !t.IsNumberedTask && !t.IsPresentation),
+                PresentationCount = a.Tasks.Count(t => t.IsPresentation),
+                AssignedCount = a.Assignments.Select(x => x.StudentId).Distinct().Count(),
+                AssignedStudentDetails = a.Assignments
+                    .Select(asgn => new
+                    {
+                        asgn.StudentId,
+                        Name = asgn.Student.FirstName + " " + asgn.Student.LastName
+                    })
+                    .ToList(),
+                StudentsWithNumberedTask = a.Tasks
+                    .Where(t => t.IsNumberedTask)
+                    .SelectMany(t => t.PresentationStudents.Select(ps => ps.StudentId))
+                    .ToList()
+            })
             .ToListAsync();
 
-        return rawActivities.Select(a => new ActivitySummaryVm
+        return projected.Select(a =>
         {
-            Id = a.Id,
-            Name = a.Name,
-            GroupName = a.Group.Name,
-            GroupId = a.GroupId,
-            TaskCount = a.Tasks.Count,
-            AssignedCount = a.Assignments.Count,
-            IsArchived = a.IsArchived,
-            AssignedStudents = a.Assignments
-                .Select(asgn => asgn.Student.FirstName + " " + asgn.Student.LastName)
-                .Distinct()
-                .OrderBy(name => name)
-                .ToList()
+            var distinctStudents = a.AssignedStudentDetails
+                .DistinctBy(x => x.StudentId)
+                .OrderBy(x => x.Name)
+                .ToList();
+
+            return new ActivitySummaryVm
+            {
+                Id = a.Id,
+                Name = a.Name,
+                GroupName = a.GroupName,
+                GroupId = a.GroupId,
+                IsArchived = a.IsArchived,
+                NumberedTaskCount = a.NumberedTaskCount,
+                OrdinaryTaskCount = a.OrdinaryTaskCount,
+                PresentationCount = a.PresentationCount,
+                AssignedCount = a.AssignedCount,
+                AssignedStudents = distinctStudents.Select(x => x.Name).ToList(),
+                AssignedStudentDetails = distinctStudents.Select(x => (x.StudentId, x.Name)).ToList(),
+                StudentsWithNumberedTask = a.StudentsWithNumberedTask.ToHashSet()
+            };
         }).ToList();
     }
 
@@ -103,7 +131,7 @@ public class ActivityService : IActivityService
             IsArchived = activity.IsArchived,
             Tasks = activity.Tasks
                 .Where(t => !t.IsPresentation && !t.IsNumberedTask)
-                .OrderByDescending(t => t.CreatedAt)
+                .OrderBy(t => t.CreatedAt)
                 .Select(t => new SimpleTaskVm(t.Id, t.Title, t.CreatedAt, t.MaxScore))
                 .ToList(),
             NumberedTasks = activity.Tasks
@@ -121,7 +149,7 @@ public class ActivityService : IActivityService
                 .ToList(),
             Presentations = activity.Tasks
                 .Where(t => t.IsPresentation)
-                .OrderBy(t => t.Title)
+                .OrderBy(t => t.CreatedAt)
                 .Select(t => new TaskWithAssignmentVm(
                     t.Id,
                     t.Title,
@@ -298,10 +326,8 @@ public class ActivityService : IActivityService
     public async Task<(bool Success, int? NewId, string? Message)> DuplicateActivityAsync(int id)
     {
         var source = await _db.Activities
-            .Include(a => a.Tasks).ThenInclude(t => t.PresentationStudents)
-            .Include(a => a.Assignments)
+            .Include(a => a.Tasks.Where(t => !t.IsNumberedTask))
             .Include(a => a.OtherAttributes).ThenInclude(attr => attr.Options)
-            .Include(a => a.OtherAttributes).ThenInclude(attr => attr.StudentValues)
             .FirstOrDefaultAsync(a => a.Id == id);
 
         if (source == null)
@@ -330,20 +356,6 @@ public class ActivityService : IActivityService
             taskIdMap[t.Id] = taskCopy;
         }
 
-        foreach (var a in source.Assignments)
-        {
-            TaskItem? mappedTask = null;
-            if (a.TaskItemId.HasValue)
-                taskIdMap.TryGetValue(a.TaskItemId.Value, out mappedTask);
-
-            copy.Assignments.Add(new Assignment
-            {
-                StudentId  = a.StudentId,
-                TaskItem   = mappedTask!,
-                AssignedAt = DateTime.UtcNow
-            });
-        }
-
         var optionIdMap = new Dictionary<int, ActivityAttributeOption>();
         foreach (var attr in source.OtherAttributes)
         {
@@ -360,50 +372,6 @@ public class ActivityService : IActivityService
         _db.Activities.Add(copy);
         await _db.SaveChangesAsync();
 
-        // Copy presentation students using the resolved new task IDs
-        var presStudents = new List<PresentationStudent>();
-        foreach (var t in source.Tasks)
-        {
-            if (!taskIdMap.TryGetValue(t.Id, out var newTask)) continue;
-            foreach (var ps in t.PresentationStudents)
-            {
-                presStudents.Add(new PresentationStudent
-                {
-                    TaskItemId = newTask.Id,
-                    StudentId  = ps.StudentId,
-                    Role       = ps.Role
-                });
-            }
-        }
-        if (presStudents.Count > 0)
-        {
-            _db.Set<PresentationStudent>().AddRange(presStudents);
-        }
-
-        var attrMap = source.OtherAttributes
-            .Zip(copy.OtherAttributes, (src, dst) => (src, dst))
-            .ToDictionary(p => p.src.Id, p => p.dst);
-
-        foreach (var attr in source.OtherAttributes)
-        {
-            if (!attrMap.TryGetValue(attr.Id, out var newAttr)) continue;
-            foreach (var val in attr.StudentValues)
-            {
-                ActivityAttributeOption? newOpt = null;
-                if (val.OptionId.HasValue)
-                    optionIdMap.TryGetValue(val.OptionId.Value, out newOpt);
-
-                _db.StudentAttributeValues.Add(new StudentAttributeValue
-                {
-                    StudentId           = val.StudentId,
-                    ActivityAttributeId = newAttr.Id,
-                    OptionId            = newOpt?.Id
-                });
-            }
-        }
-
-        await _db.SaveChangesAsync();
-
         return (true, copy.Id, null);
     }
 
@@ -412,9 +380,28 @@ public class ActivityService : IActivityService
         var activityExists = await _db.Activities.AnyAsync(a => a.Id == activityId);
         if (!activityExists) return false;
 
+        var keepIds = studentIds?.ToHashSet() ?? [];
+
+        // Find students being removed so we can clean up their task assignments
+        var removedStudentIds = await _db.Assignments
+            .Where(a => a.ActivityId == activityId && !keepIds.Contains(a.StudentId))
+            .Select(a => a.StudentId)
+            .Distinct()
+            .ToListAsync();
+
+        if (removedStudentIds.Count > 0)
+        {
+            // Remove from presentations and numbered tasks belonging to this activity
+            var stalePresStudents = await _db.PresentationStudents
+                .Where(ps => ps.TaskItem.ActivityId == activityId
+                          && removedStudentIds.Contains(ps.StudentId))
+                .ToListAsync();
+
+            _db.PresentationStudents.RemoveRange(stalePresStudents);
+        }
+
         var existing = _db.Assignments.Where(a => a.ActivityId == activityId);
         _db.Assignments.RemoveRange(existing);
-        await _db.SaveChangesAsync();
 
         if (studentIds != null)
         {
@@ -422,9 +409,9 @@ public class ActivityService : IActivityService
             {
                 _db.Assignments.Add(new Assignment { StudentId = studentId, ActivityId = activityId });
             }
-            await _db.SaveChangesAsync();
         }
 
+        await _db.SaveChangesAsync();
         return true;
     }
 

@@ -28,6 +28,8 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
     options.LogoutPath = "/Account/Logout";
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
 // MVC with global [Authorize] filter
@@ -46,6 +48,7 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromHours(sessionTimeoutHours);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
 // Register services
@@ -80,6 +83,16 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseSession();
+
+app.UseStatusCodePages(async ctx =>
+{
+    if (ctx.HttpContext.Response.StatusCode == 404)
+    {
+        var isAuthenticated = ctx.HttpContext.User.Identity?.IsAuthenticated == true;
+        var redirectUrl = isAuthenticated ? "/Groups" : "/Account/Login";
+        ctx.HttpContext.Response.Redirect(redirectUrl);
+    }
+});
 
 app.MapControllerRoute(
     name: "default",

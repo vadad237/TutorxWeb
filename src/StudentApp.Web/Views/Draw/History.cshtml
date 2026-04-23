@@ -6,76 +6,52 @@
     <a asp-action="Index" asp-route-groupId="@Model.GroupId" class="btn btn-primary">Späť na žrebovanie</a>
 </div>
 
-<table class="table table-striped table-hover align-middle">
-    <thead class="table-dark">
-        <tr>
-            <th>#</th>
-            <th>Názov</th>
-            <th>Typ</th>
-            <th>Žrebovaní študenti</th>
-            <th>Dátum a čas</th>
-        </tr>
-    </thead>
-    <tbody>
-        @{ var idx = (Model.CurrentPage - 1) * 25 + 1; }
-        @foreach (var b in Model.Batches)
-        {
-            <tr>
-                <td>@(idx++)</td>
-                <td>
-                    @if (b.PresentationTitle != null)
-                    {
-                        <span>@b.PresentationTitle</span>
-                    }
-                    else if (b.ActivityName != null)
-                    {
-                        <span>@b.ActivityName</span>
-                    }
-                    else
-                    {
-                        <span class="text-muted fst-italic">Žreb z vreca</span>
-                    }
-                </td>
-                <td>
-                    @if (b.PresentationTitle != null)
-                    {
-                        <span class="badge bg-info text-dark">Prezentácia</span>
-                    }
-                    else if (b.ActivityName != null)
-                    {
-                        <span class="badge bg-primary">Aktivita</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-secondary">Vrece</span>
-                    }
-                </td>
-                <td>
-                    @foreach (var s in b.Students)
-                    {
-                        <span class="badge bg-secondary me-1">@s.Name</span>
-                        @if (b.PresentationTitle != null)
-                        {
-                            @if (s.PresRole == 0)
-                            {
-                                <span class="badge bg-primary me-2">Prezentujúci</span>
-                            }
-                            else if (s.PresRole == 1)
-                            {
-                                <span class="badge bg-warning text-dark me-2">Náhradník</span>
-                            }
-                        }
-                    }
-                </td>
-                <td class="text-nowrap">@b.DrawnAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
-            </tr>
-        }
-    </tbody>
-</table>
-
 @if (!Model.Batches.Any())
 {
     <div class="alert alert-info">Žiadna história žrebovania pre túto skupinu.</div>
+}
+else
+{
+    <table class="table table-striped table-hover align-middle mb-4">
+        <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Prezentácia</th>
+                <th>Aktivita</th>
+                <th>Žrebovaní študenti</th>
+                <th>Dátum a čas</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{ var idx = (Model.CurrentPage - 1) * 25 + 1; }
+            @foreach (var b in Model.Batches)
+            {
+                <tr>
+                    <td>@(idx++)</td>
+                    <td>@(b.PresentationTitle ?? "-")</td>
+                    <td>@(b.PresentationTitle == null ? (b.ActivityName ?? "—") : "-")</td>
+                    <td>
+                        @foreach (var s in b.Students)
+                        {
+                            <span class="badge bg-secondary me-1">@s.Name</span>
+                            @if (b.PresentationTitle != null)
+                            {
+                                @if (s.PresRole == 0)
+                                {
+                                    <span class="badge bg-primary me-2">Prezentujúci</span>
+                                }
+                                else if (s.PresRole == 1)
+                                {
+                                    <span class="badge bg-warning text-dark me-2">Náhradník</span>
+                                }
+                            }
+                        }
+                    </td>
+                    <td class="text-nowrap">@b.DrawnAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }
 
 @if (Model.TotalPages > 1)

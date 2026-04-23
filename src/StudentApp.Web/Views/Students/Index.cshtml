@@ -13,7 +13,7 @@ else
     var groupNumbers = Model.Where(s => s.GroupNumber != null).Select(s => s.GroupNumber!).Distinct().OrderBy(g => g).ToList();
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Študenti &mdash; @groupName</h2>
+    <h2>Študenti &mdash; @groupName <span class="text-muted fs-5">(@Model.Count)</span></h2>
     <div class="d-flex align-items-center gap-2">
         <span id="selectionCount" class="text-muted small d-none">0 vybraných</span>
         <button type="button" class="btn btn-sm btn-outline-success" id="bulkActivateBtn" disabled>

@@ -327,8 +327,218 @@ document.addEventListener('DOMContentLoaded', function () {
         selectAllCb.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
     }
 
+    // Cache attribute options from server-rendered markup at page load
+    var attrOptionsCache = {};
+    // Cache per-student selected values: { studentId: { attrId: { optionId, optionName, optionColor } } }
+    var studentValuesCache = {};
+    (function () {
+        document.querySelectorAll('#otherTable thead th[data-attr-id]').forEach(function (th) {
+            var attrId = th.dataset.attrId;
+            attrOptionsCache[attrId] = [];
+        });
+        // Read options and current selected values from server-rendered rows
+        document.querySelectorAll('#otherTable tbody tr[data-student-id]').forEach(function (row) {
+            var studentId = row.dataset.studentId;
+            row.querySelectorAll('td[data-attr-id]').forEach(function (td) {
+                var attrId = td.dataset.attrId;
+                // Build options cache from first row that has options
+                if (!attrOptionsCache[attrId] || attrOptionsCache[attrId].length > 0) {
+                    /* already populated */
+                } else {
+                    var options = [];
+                    td.querySelectorAll('.other-value-pick').forEach(function (link) {
+                        options.push({
+                            optionId:    link.dataset.optionId    || '',
+                            optionName:  link.dataset.optionName  || '—',
+                            optionColor: link.dataset.optionColor || ''
+                        });
+                    });
+                    if (options.length > 0) attrOptionsCache[attrId] = options;
+                }
+                // Read current selected value from the toggle button text
+                var btn = td.querySelector('.dropdown-toggle');
+                if (btn && btn.textContent.trim() && btn.textContent.trim() !== '—') {
+                    // Find matching option by button text
+                    var matchedOpt = null;
+                    td.querySelectorAll('.other-value-pick[data-option-id]').forEach(function (link) {
+                        if (link.dataset.optionId && link.dataset.optionName === btn.textContent.trim()) {
+                            matchedOpt = { optionId: link.dataset.optionId, optionName: link.dataset.optionName, optionColor: link.dataset.optionColor };
+                        }
+                    });
+                    if (matchedOpt) {
+                        if (!studentValuesCache[studentId]) studentValuesCache[studentId] = {};
+                        studentValuesCache[studentId][attrId] = matchedOpt;
+                    }
+                }
+            });
+        });
+    })();
+
+    function buildAttrCell(attrId, studentId) {
+        var td = document.createElement('td');
+        td.className = 'text-center';
+        td.dataset.attrId = attrId;
+
+        var options = attrOptionsCache[attrId];
+        if (!options || options.length === 0) {
+            var span = document.createElement('span');
+            span.className = 'text-muted small fst-italic';
+            span.textContent = 'Žiadne stavy';
+            td.appendChild(span);
+            return td;
+        }
+
+        var div = document.createElement('div');
+        div.className = 'dropdown';
+
+        var btn = document.createElement('button');
+        btn.className = 'btn btn-sm dropdown-toggle btn-outline-secondary';
+        btn.type = 'button';
+        btn.setAttribute('data-bs-toggle', 'dropdown');
+        btn.textContent = '—';
+        div.appendChild(btn);
+
+        var ul = document.createElement('ul');
+        ul.className = 'dropdown-menu';
+
+        // Clear option
+        var clearLi = document.createElement('li');
+        var clearA = document.createElement('a');
+        clearA.className = 'dropdown-item text-muted other-value-pick';
+        clearA.href = '#';
+        clearA.dataset.studentId = studentId;
+        clearA.dataset.attrId = attrId;
+        clearA.dataset.optionId = '';
+        clearA.textContent = '— Vyčistiť —';
+        wireOtherValuePick(clearA);
+        clearLi.appendChild(clearA);
+        ul.appendChild(clearLi);
+
+        options.forEach(function (opt) {
+            if (!opt.optionId) return;
+            var li = document.createElement('li');
+            var a = document.createElement('a');
+            a.className = 'dropdown-item other-value-pick';
+            a.href = '#';
+            a.dataset.studentId = studentId;
+            a.dataset.attrId = attrId;
+            a.dataset.optionId = opt.optionId;
+            a.dataset.optionName = opt.optionName;
+            a.dataset.optionColor = opt.optionColor;
+            var badge = document.createElement('span');
+            badge.className = 'badge bg-' + opt.optionColor + ' me-1';
+            badge.innerHTML = '&#8203;';
+            a.appendChild(badge);
+            a.appendChild(document.createTextNode(opt.optionName));
+            wireOtherValuePick(a);
+            li.appendChild(a);
+            ul.appendChild(li);
+        });
+
+        div.appendChild(ul);
+        td.appendChild(div);
+        return td;
+    }
+
+    function wireOtherValuePick(link) {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            var studentId   = this.dataset.studentId;
+            var attrIdVal   = this.dataset.attrId;
+            var optionId    = this.dataset.optionId || '';
+            var optionName  = this.dataset.optionName || '—';
+            var optionColor = this.dataset.optionColor || '';
+            fetch('/ActivityAttributes/SetValue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'studentId=' + studentId + '&attributeId=' + attrIdVal
+                    + (optionId ? '&optionId=' + optionId : '')
+            }).then(function (r) { return r.json(); })
+              .then(function (d) {
+                  if (!d.success) return;
+                  // Persist to cache so re-adding the student restores the value
+                  if (!studentValuesCache[studentId]) studentValuesCache[studentId] = {};
+                  if (optionId) {
+                      studentValuesCache[studentId][attrIdVal] = { optionId: optionId, optionName: optionName, optionColor: optionColor };
+                  } else {
+                      delete studentValuesCache[studentId][attrIdVal];
+                  }
+                  var cell = document.querySelector('tr[data-student-id="' + studentId + '"] td[data-attr-id="' + attrIdVal + '"]');
+                  if (!cell) return;
+                  var btn = cell.querySelector('.dropdown-toggle');
+                  if (!btn) return;
+                  btn.textContent = optionName;
+                  btn.className = 'btn btn-sm dropdown-toggle '
+                      + (optionId ? 'btn-' + optionColor : 'btn-outline-secondary');
+              });
+        });
+    }
+
+    function updateOtherAttributesTable(checkedStudents) {
+        var tbody = document.querySelector('#otherTable tbody');
+        if (!tbody) return;
+
+        var desiredIds = new Set(checkedStudents.map(function (c) { return c.value; }));
+
+        // Save current values and remove rows for students no longer assigned
+        Array.from(tbody.querySelectorAll('tr[data-student-id]')).forEach(function (row) {
+            if (!desiredIds.has(row.dataset.studentId)) {
+                var sid = row.dataset.studentId;
+                row.querySelectorAll('td[data-attr-id]').forEach(function (td) {
+                    var aid = td.dataset.attrId;
+                    var btn = td.querySelector('.dropdown-toggle');
+                    if (!btn) return;
+                    var text = btn.textContent.trim();
+                    if (!text || text === '—') {
+                        if (studentValuesCache[sid]) delete studentValuesCache[sid][aid];
+                        return;
+                    }
+                    td.querySelectorAll('.other-value-pick[data-option-id]').forEach(function (link) {
+                        if (link.dataset.optionId && link.dataset.optionName === text) {
+                            if (!studentValuesCache[sid]) studentValuesCache[sid] = {};
+                            studentValuesCache[sid][aid] = { optionId: link.dataset.optionId, optionName: link.dataset.optionName, optionColor: link.dataset.optionColor };
+                        }
+                    });
+                });
+                row.remove();
+            }
+        });
+
+        var attrIds = Array.from(document.querySelectorAll('#otherTable thead th[data-attr-id]'))
+            .map(function (th) { return th.dataset.attrId; });
+
+        var existingIds = new Set(
+            Array.from(tbody.querySelectorAll('tr[data-student-id]'))
+                .map(function (r) { return r.dataset.studentId; })
+        );
+
+        checkedStudents.forEach(function (c) {
+            if (existingIds.has(c.value)) return;
+            var tr = document.createElement('tr');
+            tr.dataset.studentId = c.value;
+            var nameTd = document.createElement('td');
+            nameTd.textContent = c.dataset.name;
+            tr.appendChild(nameTd);
+            attrIds.forEach(function (attrId) {
+                var td = buildAttrCell(attrId, c.value);
+                // Restore previously saved value if any
+                var saved = studentValuesCache[c.value] && studentValuesCache[c.value][attrId];
+                if (saved) {
+                    var btn = td.querySelector('.dropdown-toggle');
+                    if (btn) {
+                        btn.textContent = saved.optionName;
+                        btn.className = 'btn btn-sm dropdown-toggle btn-' + saved.optionColor;
+                    }
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
     function saveAssignments() {
         var checked = getStudentCheckboxes().filter(function (cb) { return cb.checked; });
+        var keepIds = new Set(checked.map(function (c) { return c.value; }));
         var body = '__RequestVerificationToken=' + encodeURIComponent(token)
             + '&activityId=' + activityId;
         checked.forEach(function (c) { body += '&studentIds=' + encodeURIComponent(c.value); });
@@ -339,16 +549,59 @@ document.addEventListener('DOMContentLoaded', function () {
         }).then(function (r) {
             if (r.ok) {
                 var badgeArea = document.getElementById('activity-badge-area');
+                var heading = badgeArea.closest('.card-body').querySelector('h5');
                 if (checked.length === 0) {
                     badgeArea.innerHTML = '<p class="text-muted small mb-0">Žiadni študenti zatiaľ neboli priradení.</p>';
+                    var cWith = document.getElementById('countWithTask');
+                    var cWithout = document.getElementById('countWithoutTask');
+                    if (cWith) cWith.textContent = '0';
+                    if (cWithout) cWithout.textContent = '0';
+                    document.querySelectorAll('.pres-role-dropdown').forEach(function (d) { d.remove(); });
                 } else {
                     var html = '<div class="d-flex flex-wrap gap-1">';
                     checked.forEach(function (c) {
-                        html += '<span class="badge bg-info text-dark">' + c.dataset.name + '</span>';
+                        html += '<span class="badge bg-secondary" data-student-id="' + c.value + '">' + c.dataset.name + '</span>';
                     });
                     html += '</div>';
                     badgeArea.innerHTML = html;
+                    if (window.updateActivityBadgeStyles) window.updateActivityBadgeStyles();
+                    var assignedForDropdowns = checked.map(function (c) { return { id: c.value, name: c.dataset.name }; });
+                    // Uncheck removed students from numbered-task dropdowns and refresh their badge areas
+                    // Must run before refreshPresRoleDropdowns rebuilds the presentation dropdown DOM
+                    document.querySelectorAll('.numbered-task-student-dropdown').forEach(function (dropdown) {
+                        var taskBadgeArea = dropdown.dataset.badgeArea ? document.getElementById(dropdown.dataset.badgeArea) : null;
+                        var changed = false;
+                        dropdown.querySelectorAll('.pres-student-cb').forEach(function (cb) {
+                            if (cb.checked && !keepIds.has(cb.value)) { cb.checked = false; changed = true; }
+                        });
+                        if (changed && taskBadgeArea) {
+                            var still = Array.from(dropdown.querySelectorAll('.pres-student-cb:checked'));
+                            taskBadgeArea.innerHTML = still.length === 0
+                                ? '<span class="text-muted small">Žiadni</span>'
+                                : still.map(function (c) { return '<span class="badge bg-primary">' + c.dataset.name + '</span>'; }).join('');
+                        }
+                    });
+                    // Uncheck removed students from presentation dropdowns and refresh badge areas
+                    // Must run before refreshPresRoleDropdowns regenerates the dropdown HTML
+                    document.querySelectorAll('.pres-role-dropdown').forEach(function (dropdown) {
+                        var taskBadgeArea = dropdown.dataset.badgeArea ? document.getElementById(dropdown.dataset.badgeArea) : null;
+                        var changed = false;
+                        dropdown.querySelectorAll('.pres-student-cb').forEach(function (cb) {
+                            if (cb.checked && !keepIds.has(cb.value)) { cb.checked = false; changed = true; }
+                        });
+                        if (changed && taskBadgeArea) {
+                            var still = Array.from(dropdown.querySelectorAll('.pres-student-cb:checked'));
+                            var badgeCls = dropdown.dataset.role === '1' ? 'bg-warning text-dark' : 'bg-primary';
+                            taskBadgeArea.innerHTML = still.length === 0
+                                ? '<span class="text-muted small">Žiadni</span>'
+                                : still.map(function (c) { return '<span class="badge ' + badgeCls + '">' + c.dataset.name + '</span>'; }).join('');
+                        }
+                    });
+                    if (window.updateAssignedStudentsCache) window.updateAssignedStudentsCache(assignedForDropdowns);
+                    if (window.refreshPresRoleDropdowns) window.refreshPresRoleDropdowns(assignedForDropdowns);
                 }
+                if (heading) heading.textContent = 'Priradení študenti (' + checked.length + ')';
+                updateOtherAttributesTable(checked);
             } else { showToast('Nepodarilo sa uložiť priradenie.'); }
         });
     }
@@ -576,6 +829,7 @@ document.querySelectorAll('.btn-delete-task').forEach(function (btn) {
     var autoAssignBtn = document.getElementById('autoAssignNumberedBtn');
     var selectAll     = document.getElementById('numberedTaskSelectAll');
     var countLabel    = document.getElementById('numberedTaskSelectionCount');
+    var deleteSelectedBtn = document.getElementById('deleteSelectedNumberedBtn');
     if (!autoAssignBtn && !selectAll) return;
 
     var activityId = autoAssignBtn ? autoAssignBtn.dataset.activityId : null;
@@ -592,6 +846,7 @@ document.querySelectorAll('.btn-delete-task').forEach(function (btn) {
             countLabel.classList.toggle('d-none', count === 0);
         }
         if (autoAssignBtn) autoAssignBtn.disabled = count === 0;
+        if (deleteSelectedBtn) deleteSelectedBtn.disabled = count === 0;
         var total = document.querySelectorAll('.numbered-task-row-check').length;
         if (selectAll) {
             selectAll.checked = count === total && total > 0;
@@ -614,6 +869,52 @@ document.querySelectorAll('.btn-delete-task').forEach(function (btn) {
     }
 
     document.querySelectorAll('.numbered-task-row-check').forEach(wireCheckbox);
+
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.addEventListener('click', function () {
+            var checked = getChecked();
+            if (checked.length === 0) return;
+            var modalEl = document.getElementById('confirmModal');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            document.getElementById('confirmModalTitle').textContent = 'Vymazať zadania';
+            document.getElementById('confirmModalBody').textContent =
+                'Počet vybraných zadaní na vymazanie: ' + checked.length + '. Túto akciu nemožno vrátiť.';
+            var actionBtn = document.getElementById('confirmModalAction');
+            var newBtn = actionBtn.cloneNode(true);
+            actionBtn.parentNode.replaceChild(newBtn, actionBtn);
+            newBtn.addEventListener('click', function () {
+                modal.hide();
+                var ids = checked.map(function (cb) { return parseInt(cb.value); });
+                deleteSelectedBtn.disabled = true;
+                fetch('/Tasks/BulkDelete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(ids)
+                }).then(function (r) { return r.json(); })
+                  .then(function (d) {
+                      if (!d.success) { showToast(d.message || 'Vymazanie zlyhalo.'); deleteSelectedBtn.disabled = false; return; }
+                      var tbody = document.getElementById('numberedTasksTbody');
+                      var table = document.getElementById('numberedTasksTable');
+                      var empty = document.getElementById('numberedTasksEmpty');
+                      var heading = document.querySelector('#addNumberedTasksBtn').closest('.card-body').querySelector('h5');
+                      checked.forEach(function (cb) {
+                          var row = cb.closest('tr');
+                          if (row) row.remove();
+                      });
+                      var remaining = tbody.querySelectorAll('tr').length;
+                      if (remaining === 0) {
+                          if (table) table.classList.add('d-none');
+                          if (empty) empty.classList.remove('d-none');
+                      }
+                      if (heading) heading.textContent = 'Zadania (' + remaining + ')';
+                      deleteSelectedBtn.disabled = false;
+                      updateToolbar();
+                  })
+                  .catch(function () { showToast('Vymazanie zlyhalo.'); deleteSelectedBtn.disabled = false; });
+            });
+            modal.show();
+        });
+    }
 
     if (autoAssignBtn) {
         autoAssignBtn.addEventListener('click', function () {
@@ -870,7 +1171,7 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
                 body: 'id=' + currentAttrId + '&name=' + encodeURIComponent(newName)
             }));
         }
-        statesList.querySelectorAll('[id^="state-row-"]').forEach(function (row) {
+        statesList.querySelectorAll('[id^="state-row-"]:not([data-new-state])').forEach(function (row) {
             var id    = row.id.replace('state-row-', '');
             var name  = row.querySelector('.state-name-input').value.trim();
             var color = row.querySelector('.state-color-select').value;
@@ -879,6 +1180,16 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'id=' + id + '&name=' + encodeURIComponent(name) + '&color=' + color
+            }));
+        });
+        statesList.querySelectorAll('[id^="state-row-"][data-new-state]').forEach(function (row) {
+            var name  = row.querySelector('.state-name-input').value.trim();
+            var color = row.querySelector('.state-color-select').value;
+            if (!name) return;
+            promises.push(fetch('/ActivityAttributes/AddOption', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'attributeId=' + currentAttrId + '&name=' + encodeURIComponent(name) + '&color=' + color
             }));
         });
         Promise.all(promises).then(function () { location.reload(); });
@@ -907,12 +1218,32 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
     addStateBtn.addEventListener('click', function () {
         var name  = newStateName.value.trim();
         var color = newStateColor.value;
-        if (!name || !currentAttrId) return;
-        fetch('/ActivityAttributes/AddOption', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'attributeId=' + currentAttrId + '&name=' + encodeURIComponent(name) + '&color=' + color
-        }).then(function () { location.reload(); });
+        if (!name) return;
+        var tempId = 'new-' + Date.now();
+        var div = document.createElement('div');
+        div.className = 'd-flex align-items-center gap-2 mb-1';
+        div.id = 'state-row-' + tempId;
+        div.dataset.newState = 'true';
+        div.innerHTML = '<span class="badge bg-' + color + ' flex-shrink-0">' + escHtml(name) + '</span>'
+            + '<input type="text" class="form-control form-control-sm state-name-input" style="max-width:130px" value="' + escHtml(name) + '" data-id="' + tempId + '" maxlength="200" />'
+            + '<select class="form-select form-select-sm state-color-select" style="max-width:110px" data-id="' + tempId + '">'
+            + colorOptions(color)
+            + '</select>'
+            + '<button type="button" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>';
+        div.querySelector('.state-color-select').addEventListener('change', function () {
+            div.querySelector('.badge').className = 'badge bg-' + this.value + ' flex-shrink-0';
+        });
+        div.querySelector('.state-name-input').addEventListener('input', function () {
+            div.querySelector('.badge').textContent = this.value || '\u200b';
+        });
+        div.querySelector('.btn-outline-danger').addEventListener('click', function () {
+            div.remove();
+        });
+        var placeholder = statesList.querySelector('p.text-muted.small');
+        if (placeholder) placeholder.remove();
+        statesList.appendChild(div);
+        newStateName.value = '';
+        newStateName.focus();
     });
 
     newStateName.addEventListener('keypress', function (e) {
@@ -942,9 +1273,7 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
         });
     }
 
-    document.querySelectorAll('.pres-role-dropdown').forEach(function (d) { syncDisabled(d); });
-
-    document.querySelectorAll('.pres-role-dropdown').forEach(function (dropdown) {
+    function wirePresRoleDropdown(dropdown) {
         var taskId     = dropdown.dataset.taskId;
         var role       = dropdown.dataset.role;
         var badgeId    = dropdown.dataset.badgeArea;
@@ -973,7 +1302,67 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
                 });
             });
         });
-    });
+    }
+
+    function buildPresRoleDropdownHtml(taskId, role, students) {
+        var badgeAreaId = role === '0' ? 'pres-presentee-badges-' + taskId : 'pres-sub-badges-' + taskId;
+        var items = students.map(function (s) {
+            return '<li><label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">' +
+                '<input class="form-check-input mt-0 flex-shrink-0 pres-student-cb" type="checkbox" value="' +
+                s.id + '" data-name="' + s.name.replace(/"/g, '&quot;') + '" />' +
+                s.name + '</label></li>';
+        }).join('');
+        return '<div class="dropdown pres-role-dropdown" data-task-id="' + taskId +
+            '" data-role="' + role + '" data-badge-area="' + badgeAreaId + '">' +
+            '<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" ' +
+            'data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">' +
+            '<i class="bi bi-people"></i></button>' +
+            '<ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">' +
+            items + '</ul></div>';
+    }
+
+    function refreshPresRoleDropdowns(assignedStudents) {
+        document.querySelectorAll('#presTable tbody tr').forEach(function (row) {
+            var taskId = row.querySelector('[data-id]') ? row.querySelector('[data-id]').dataset.id :
+                         (row.querySelector('.pres-row-check') ? row.querySelector('.pres-row-check').value : null);
+            if (!taskId) return;
+            [0, 1].forEach(function (role) {
+                var cells = row.querySelectorAll('td');
+                var targetCell = cells[role === 0 ? 4 : 5];
+                if (!targetCell) return;
+                var container = targetCell.querySelector('.d-flex');
+                if (!container) return;
+                var existing = container.querySelector('.pres-role-dropdown[data-role="' + role + '"]');
+                if (assignedStudents.length === 0) {
+                    if (existing) existing.remove();
+                    return;
+                }
+                var html = buildPresRoleDropdownHtml(taskId, String(role), assignedStudents);
+                if (existing) {
+                    // preserve checked state before replacing
+                    var checkedIds = new Set(Array.from(existing.querySelectorAll('.pres-student-cb:checked')).map(function (c) { return c.value; }));
+                    existing.outerHTML = html;
+                    var newDropdown = container.querySelector('.pres-role-dropdown[data-role="' + role + '"]');
+                    if (newDropdown) {
+                        newDropdown.querySelectorAll('.pres-student-cb').forEach(function (cb) {
+                            if (checkedIds.has(cb.value)) cb.checked = true;
+                        });
+                        wirePresRoleDropdown(newDropdown);
+                    }
+                } else {
+                    container.insertAdjacentHTML('beforeend', html);
+                    var newDropdown = container.querySelector('.pres-role-dropdown[data-role="' + role + '"]');
+                    if (newDropdown) wirePresRoleDropdown(newDropdown);
+                }
+            });
+        });
+        document.querySelectorAll('.pres-role-dropdown').forEach(function (d) { syncDisabled(d); });
+    }
+
+    document.querySelectorAll('.pres-role-dropdown').forEach(function (d) { syncDisabled(d); });
+    document.querySelectorAll('.pres-role-dropdown').forEach(wirePresRoleDropdown);
+
+    window.refreshPresRoleDropdowns = refreshPresRoleDropdowns;
 })();
 
 (function () {
@@ -983,7 +1372,7 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
     var allStudents = allStudentsEl ? JSON.parse(allStudentsEl.textContent) : [];
 
     function buildNumberedTaskDropdownHtml(taskId) {
-        var studentSource = assignedStudents.length ? assignedStudents : allStudents;
+        var studentSource = assignedStudents;
         if (!studentSource.length) return '';
         var items = studentSource.map(function (s) {
             return '<li><label class="dropdown-item d-flex align-items-center gap-2 py-1 px-2" style="cursor:pointer">' +
@@ -995,6 +1384,35 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
             '<i class="bi bi-people"></i></button>' +
             '<ul class="dropdown-menu p-2" style="min-width:220px;max-height:250px;overflow-y:auto">' + items + '</ul>' +
             '</div>';
+    }
+
+    function updateActivityBadgeStyles() {
+        var badgeArea = document.getElementById('activity-badge-area');
+        if (!badgeArea) return;
+        var studentsWithTask = new Set();
+        document.querySelectorAll('.numbered-task-student-dropdown').forEach(function (dd) {
+            dd.querySelectorAll('.pres-student-cb:checked').forEach(function (cb) {
+                studentsWithTask.add(cb.value);
+            });
+        });
+        var withCount = 0, withoutCount = 0;
+        badgeArea.querySelectorAll('.badge').forEach(function (badge) {
+            var sid = badge.dataset.studentId;
+            if (!sid) return;
+            if (studentsWithTask.has(sid)) {
+                badge.classList.remove('bg-secondary');
+                badge.classList.add('bg-info', 'text-dark');
+                withCount++;
+            } else {
+                badge.classList.remove('bg-info', 'text-dark');
+                badge.classList.add('bg-secondary');
+                withoutCount++;
+            }
+        });
+        var cWith    = document.getElementById('countWithTask');
+        var cWithout = document.getElementById('countWithoutTask');
+        if (cWith)    cWith.textContent    = withCount;
+        if (cWithout) cWithout.textContent = withoutCount;
     }
 
     function wireNumberedTaskDropdown(dropdown) {
@@ -1012,17 +1430,48 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
                 }).then(function (r) {
                     if (r.ok) {
                         var badgeArea = document.getElementById(badgeId);
-                        if (!badgeArea) return;
-                        if (checked.length === 0) {
-                            badgeArea.innerHTML = '<span class="text-muted small">Žiadni</span>';
-                        } else {
-                            badgeArea.innerHTML = checked.map(function (c) {
-                                return '<span class="badge bg-primary">' + c.dataset.name + '</span>';
-                            }).join('');
+                        if (badgeArea) {
+                            if (checked.length === 0) {
+                                badgeArea.innerHTML = '<span class="text-muted small">Žiadni</span>';
+                            } else {
+                                badgeArea.innerHTML = checked.map(function (c) {
+                                    return '<span class="badge bg-primary">' + c.dataset.name + '</span>';
+                                }).join('');
+                            }
                         }
+                        updateActivityBadgeStyles();
                     } else { showToast('Nepodarilo sa uložiť priradenie študentov.'); }
                 });
             });
+        });
+    }
+
+    function refreshNumberedTaskDropdowns() {
+        document.querySelectorAll('.numbered-task-student-dropdown').forEach(function (dropdown) {
+            var taskId = dropdown.dataset.taskId;
+            // preserve currently checked student IDs before replacing
+            var checkedIds = new Set(
+                Array.from(dropdown.querySelectorAll('.pres-student-cb:checked')).map(function (c) { return c.value; })
+            );
+            var newHtml = buildNumberedTaskDropdownHtml(taskId);
+            if (!newHtml) {
+                // no assigned students — clear the list but keep the button structure
+                dropdown.querySelector('ul').innerHTML = '';
+                return;
+            }
+            var tmp = document.createElement('div');
+            tmp.innerHTML = newHtml;
+            var newUl = tmp.querySelector('ul');
+            if (newUl) {
+                var existingUl = dropdown.querySelector('ul');
+                // Update contents in-place so Bootstrap's cached dropdown-menu reference stays valid
+                existingUl.innerHTML = newUl.innerHTML;
+                // Restore checked state for students that are still present
+                existingUl.querySelectorAll('.pres-student-cb').forEach(function (cb) {
+                    if (checkedIds.has(cb.value)) cb.checked = true;
+                });
+                wireNumberedTaskDropdown(dropdown);
+            }
         });
     }
 
@@ -1030,6 +1479,11 @@ document.querySelectorAll('.other-value-pick').forEach(function (link) {
 
     window.buildNumberedTaskDropdownHtml = buildNumberedTaskDropdownHtml;
     window.wireNumberedTaskDropdown = wireNumberedTaskDropdown;
+    window.updateActivityBadgeStyles = updateActivityBadgeStyles;
+    window.updateAssignedStudentsCache = function (students) {
+        assignedStudents = students;
+        refreshNumberedTaskDropdowns();
+    };
 })();
 
 document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
@@ -1042,8 +1496,9 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
 (function () {
     var presSelectAll = document.getElementById('presSelectAll');
     if (!presSelectAll) return;
-    var countLabel  = document.getElementById('presSelectionCount');
-    var presDrawBtn = document.getElementById('presDrawBtn');
+    var countLabel         = document.getElementById('presSelectionCount');
+    var presDrawBtn        = document.getElementById('presDrawBtn');
+    var presDeleteBtn      = document.getElementById('presDeleteSelectedBtn');
 
     function getPresChecked() {
         return Array.from(document.querySelectorAll('.pres-row-check:checked'));
@@ -1054,6 +1509,7 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
         var count = checked.length;
         countLabel.textContent = count > 0 ? count + ' vybraných' : '';
         presDrawBtn.disabled = count === 0;
+        if (presDeleteBtn) presDeleteBtn.disabled = count === 0;
         var total = document.querySelectorAll('.pres-row-check').length;
         presSelectAll.checked = count === total && total > 0;
         presSelectAll.indeterminate = count > 0 && count < total;
@@ -1076,6 +1532,50 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
         var ids = checked.map(function (cb) { return cb.value; }).join(',');
         window.location.href = '/Draw?presentationIds=' + ids + '&presRole=both';
     });
+
+    if (presDeleteBtn) {
+        presDeleteBtn.addEventListener('click', function () {
+            var checked = getPresChecked();
+            if (checked.length === 0) return;
+            var modalEl = document.getElementById('confirmModal');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            document.getElementById('confirmModalTitle').textContent = 'Vymazať prezentácie';
+            document.getElementById('confirmModalBody').textContent =
+                'Počet vybraných prezentácií na vymazanie ' + checked.length + ' . Túto akciu nemožno vrátiť.';
+            var actionBtn = document.getElementById('confirmModalAction');
+            var newBtn = actionBtn.cloneNode(true);
+            actionBtn.parentNode.replaceChild(newBtn, actionBtn);
+            newBtn.addEventListener('click', function () {
+                modal.hide();
+                var ids = checked.map(function (cb) { return parseInt(cb.value); });
+                presDeleteBtn.disabled = true;
+                fetch('/Tasks/BulkDelete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(ids)
+                }).then(function (r) { return r.json(); })
+                  .then(function (d) {
+                      if (!d.success) { showToast(d.message || 'Vymazanie zlyhalo.'); presDeleteBtn.disabled = false; return; }
+                      var presTable = document.getElementById('presTable');
+                      checked.forEach(function (cb) {
+                          var row = cb.closest('tr');
+                          if (row) row.remove();
+                      });
+                      // Update heading count
+                      var remaining = presTable ? presTable.querySelectorAll('tbody tr').length : 0;
+                      var heading = document.querySelector('h4.mb-0');
+                      if (heading && heading.textContent.startsWith('Prezentácie')) {
+                          heading.textContent = 'Prezentácie (' + remaining + ')';
+                      }
+                      if (presTable && remaining === 0) presTable.closest('.table-responsive, div')?.remove();
+                      presDeleteBtn.disabled = false;
+                      updatePresToolbar();
+                  })
+                  .catch(function () { showToast('Vymazanie zlyhalo.'); presDeleteBtn.disabled = false; });
+            });
+            modal.show();
+        });
+    }
 })();
 
 // ── Activities/DrawResult.cshtml ──────────────────────────────────────────
@@ -1203,9 +1703,10 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
             timeChangeTimer = setTimeout(doTimeNavigate, 800);
         });
 
-        // 'change' fires when the field is committed (blur / Enter) — handle
-        // it immediately to avoid the extra 800 ms wait in that case.
-        timeInput.addEventListener('change', function () {
+        // 'blur' fires when the user leaves the field — handle it immediately
+        // to avoid the extra 800 ms wait when tabbing/clicking away.
+        timeInput.addEventListener('blur', function () {
+            if (!timeInput.value) return;
             clearTimeout(timeChangeTimer);
             doTimeNavigate();
         });

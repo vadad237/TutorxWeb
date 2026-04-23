@@ -39,7 +39,7 @@ public class AccountController : Controller
             return LocalRedirect(returnUrl ?? Url.Action("Index", "Groups")!);
         }
 
-        ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+        ModelState.AddModelError(string.Empty, "Neúspešný pokus o prihlásenie.");
         return View(model);
     }
 

@@ -9,6 +9,7 @@ public class TaskSummaryForEvalVm
     public int ActivityId { get; set; }
     public string ActivityName { get; set; } = null!;
     public bool IsPresentation { get; set; }
+    public bool IsNumberedTask { get; set; }
     public decimal? MaxScore { get; set; }
 }
 

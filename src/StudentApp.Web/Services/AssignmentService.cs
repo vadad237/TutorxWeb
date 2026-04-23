@@ -49,6 +49,14 @@ public class AssignmentService : IAssignmentService
         for (int i = 0; i < activeStudents.Count; i++)
             buckets[i % activities.Count].Add(activeStudents[i].Id);
 
+        var taskIds = await _db.TaskItems
+            .Where(t => ids.Contains(t.ActivityId))
+            .Select(t => t.Id)
+            .ToListAsync();
+
+        var existingPresStudents = _db.PresentationStudents.Where(ps => taskIds.Contains(ps.TaskItemId));
+        _db.PresentationStudents.RemoveRange(existingPresStudents);
+
         var existing = _db.Assignments.Where(a => ids.Contains(a.ActivityId));
         _db.Assignments.RemoveRange(existing);
         await _db.SaveChangesAsync();
@@ -92,6 +100,14 @@ public class AssignmentService : IAssignmentService
             .ToList();
 
         var tasks = activity.Tasks.ToList();
+
+        var taskIds = await _db.TaskItems
+            .Where(t => t.ActivityId == activityId)
+            .Select(t => t.Id)
+            .ToListAsync();
+
+        var existingPresStudents = _db.PresentationStudents.Where(ps => taskIds.Contains(ps.TaskItemId));
+        _db.PresentationStudents.RemoveRange(existingPresStudents);
 
         var existing = _db.Assignments.Where(a => a.ActivityId == activityId);
         _db.Assignments.RemoveRange(existing);
@@ -275,7 +291,8 @@ public class AssignmentService : IAssignmentService
                 ActivityId = task.ActivityId,
                 TaskItemId = taskId,
                 CycleNumber = currentCycle,
-                DrawnAt = drawnAt
+                DrawnAt = drawnAt,
+                Role = role
             });
         }
 

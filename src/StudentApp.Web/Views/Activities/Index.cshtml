@@ -1,5 +1,7 @@
 @model List<ActivitySummaryVm>
-@{ViewData["Title"] = "Aktivity";}
+@{
+    ViewData["Title"] = "Aktivity";
+}
 
 @if ((bool?)ViewBag.NoGroupSelected == true)
 {
@@ -8,92 +10,103 @@
 else
 {
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Aktivity</h2>
-    <div class="d-flex align-items-center gap-2">
-        <span id="selectionCount" class="text-muted small d-none">0 vybraných</span>
-        <button type="button" class="btn btn-sm btn-outline-success" id="bulkAssignBtn" disabled>
-            <i class="bi bi-shuffle me-1"></i>Auto-priradenie
-        </button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkDrawBtn" disabled>
-            <i class="bi bi-dice-3 me-1"></i>Žrebovanie
-        </button>
-        <button type="button" class="btn btn-sm btn-outline-danger" id="bulkDeleteBtn" disabled>
-            <i class="bi bi-trash me-1"></i>Vymazať
-        </button>
-        <a asp-action="Create" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i>Nová aktivita
-        </a>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Aktivity</h2>
+        <div class="d-flex align-items-center gap-2">
+            <span id="selectionCount" class="text-muted small d-none">0 vybraných</span>
+            <button type="button" class="btn btn-sm btn-outline-success" id="bulkAssignBtn" disabled>
+                <i class="bi bi-shuffle me-1"></i>Auto-priradenie
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkDrawBtn" disabled>
+                <i class="bi bi-dice-3 me-1"></i>Žrebovanie
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" id="bulkDeleteBtn" disabled>
+                <i class="bi bi-trash me-1"></i>Vymazať
+            </button>
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Nová aktivita
+            </a>
+        </div>
     </div>
-</div>
 
-<table id="activitiesTable" class="table table-striped table-hover">
-    <thead class="table-dark">
-        <tr>
-            <th style="width:2.5rem">
-                <input type="checkbox" id="selectAll" class="form-check-input" title="Označiť všetko" />
-            </th>
-            <th data-sort="text">Názov<span class="sort-icon"></span></th>
-            <th data-sort="num">Úlohy<span class="sort-icon"></span></th>
-            <th>Priradení študenti</th>
-            <th>Akcie</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var a in Model)
-        {
-            <tr data-detail-url="@Url.Action("Details", new { id = a.Id })">
-                <td>
-                    <input type="checkbox" class="form-check-input row-check" value="@a.Id" data-name="@a.Name" />
-                </td>
-                <td><a asp-action="Details" asp-route-id="@a.Id">@a.Name</a></td>
-                <td>@a.TaskCount</td>
-                <td>
-                    @if (a.AssignedStudents.Any())
-                    {
-                        <div class="d-flex flex-wrap gap-1">
-                            @foreach (var name in a.AssignedStudents)
-                            {
-                                <span class="badge bg-info text-dark">@name</span>
-                            }
-                        </div>
-                    }
-                    else
-                    {
-                        <span class="text-muted">-</span>
-                    }
-                </td>
-                <td>
-                    <div class="btn-group btn-group-sm">
-                        <a asp-action="Details" asp-route-id="@a.Id" class="btn btn-sm btn-icon btn-outline-info"
-                           data-bs-toggle="tooltip" title="Detaily">
-                            <i class="bi bi-eye"></i>
-                        </a>
-                        <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-icon btn-outline-primary"
-                           data-bs-toggle="tooltip" title="Upraviť">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <button type="button" class="btn btn-sm btn-icon btn-outline-secondary btn-duplicate-activity"
-                                data-bs-toggle="tooltip" title="Duplikovať"
-                                data-id="@a.Id" data-name="@a.Name">
-                            <i class="bi bi-copy"></i>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-delete-activity"
-                                title="Vymazať"
-                                data-id="@a.Id" data-name="@a.Name">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </td>
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">Žiadne aktivity. Vytvorte svoju prvú aktivitu.</div>
+    }
+    else
+    {
+        <div class="d-flex flex-wrap gap-3 mt-1 mb-2">
+            <span class="text-muted small"><span class="badge bg-info text-dark me-1">Meno</span>Má priradené zadanie</span>
+            <span class="text-muted small"><span class="badge bg-secondary me-1">Meno</span>Nemá priradené zadanie</span>
+        </div>
+    }
+
+    <table id="activitiesTable" class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th style="width:2.5rem">
+                    <input type="checkbox" id="selectAll" class="form-check-input" title="Označiť všetko" />
+                </th>
+                <th data-sort="text">Názov<span class="sort-icon"></span></th>
+                <th data-sort="num" style="width:90px">Zadania<span class="sort-icon"></span></th>
+                <th data-sort="num" style="width:80px">Úlohy<span class="sort-icon"></span></th>
+                <th data-sort="num" style="width:110px">Prezentácie<span class="sort-icon"></span></th>
+                <th>Priradení študenti</th>
+                <th>Akcie</th>
             </tr>
-        }
-    </tbody>
-</table>
-
-@if (!Model.Any())
-{
-    <div class="alert alert-info">Žiadne aktivity. Vytvorte svoju prvú aktivitu.</div>
-}
-
+        </thead>
+        <tbody>
+            @foreach (var a in Model)
+            {
+                <tr data-detail-url="@Url.Action("Details", new { id = a.Id })">
+                    <td>
+                        <input type="checkbox" class="form-check-input row-check" value="@a.Id" data-name="@a.Name" />
+                    </td>
+                    <td><a asp-action="Details" asp-route-id="@a.Id">@a.Name</a></td>
+                    <td>@a.NumberedTaskCount</td>
+                    <td>@a.OrdinaryTaskCount</td>
+                    <td>@a.PresentationCount</td>
+                    <td>
+                        @if (a.AssignedStudentDetails.Any())
+                        {
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var s in a.AssignedStudentDetails)
+                                {
+                                    var hasTask = a.StudentsWithNumberedTask.Contains(s.Id);
+                                    <span class="badge @(hasTask ? "bg-info text-dark" : "bg-secondary")">@s.Name</span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted">-</span>
+                        }
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a asp-action="Details" asp-route-id="@a.Id" class="btn btn-sm btn-icon btn-outline-info"
+                               data-bs-toggle="tooltip" title="Detaily">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-icon btn-outline-primary"
+                               data-bs-toggle="tooltip" title="Upraviť">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-icon btn-outline-secondary btn-duplicate-activity"
+                                    data-bs-toggle="tooltip" title="Duplikovať"
+                                    data-id="@a.Id" data-name="@a.Name">
+                                <i class="bi bi-copy"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-delete-activity"
+                                    title="Vymazať"
+                                    data-id="@a.Id" data-name="@a.Name">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }
 

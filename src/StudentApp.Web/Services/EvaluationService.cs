@@ -25,9 +25,9 @@ public class EvaluationService : IEvaluationService
             .ToListAsync();
 
         var tasks = await _db.TaskItems
-            .Where(t => t.Activity.GroupId == groupId && !t.Activity.IsArchived)
+            .Where(t => t.Activity.GroupId == groupId && !t.Activity.IsArchived && !t.IsNumberedTask)
             .Include(t => t.Activity)
-            .OrderBy(t => t.Activity.Name).ThenBy(t => t.Title)
+            .OrderBy(t => t.Activity.CreatedAt)
             .ToListAsync();
 
         var evaluations = await _db.Evaluations
@@ -74,11 +74,40 @@ public class EvaluationService : IEvaluationService
 
         var activityIds = tasks.Select(t => t.ActivityId).ToHashSet();
         var assignments = await _db.Assignments
-            .Where(a => activityIds.Contains(a.ActivityId) && a.TaskItemId != null)
+            .Where(a => activityIds.Contains(a.ActivityId))
             .ToListAsync();
-        var assignedStudentTasks = assignments
-            .Select(a => (a.StudentId, TaskItemId: a.TaskItemId!.Value))
+
+        var assignedStudentTasks = new HashSet<(int StudentId, int TaskItemId)>();
+
+        // Any assignment to an activity (regardless of TaskItemId) means the student
+        // can be evaluated for all regular (non-presentation) tasks in that activity
+        var studentActivityPairs = assignments
+            .Select(a => (a.StudentId, a.ActivityId))
+            .Distinct()
             .ToHashSet();
+
+        var nonPresentationTasks = tasks.Where(t => !t.IsPresentation).ToList();
+        foreach (var t in nonPresentationTasks)
+        {
+            foreach (var (studentId, activityId) in studentActivityPairs)
+            {
+                if (activityId == t.ActivityId)
+                    assignedStudentTasks.Add((studentId, t.Id));
+            }
+        }
+
+        // Presentations are assigned via PresentationStudents, not Assignments — include them too
+        var presentationTaskIds = tasks.Where(t => t.IsPresentation).Select(t => t.Id).ToHashSet();
+        if (presentationTaskIds.Count > 0)
+        {
+            var presAssignments = await _db.PresentationStudents
+                .Where(ps => presentationTaskIds.Contains(ps.TaskItemId))
+                .Select(ps => new { ps.StudentId, ps.TaskItemId })
+                .ToListAsync();
+
+            foreach (var ps in presAssignments)
+                assignedStudentTasks.Add((ps.StudentId, ps.TaskItemId));
+        }
 
         return new EvaluationIndexVm
         {
@@ -97,6 +126,7 @@ public class EvaluationService : IEvaluationService
                 ActivityId = t.ActivityId,
                 ActivityName = t.Activity.Name,
                 IsPresentation = t.IsPresentation,
+                IsNumberedTask = t.IsNumberedTask,
                 MaxScore = t.MaxScore
             }).ToList(),
             Scores = scores,
