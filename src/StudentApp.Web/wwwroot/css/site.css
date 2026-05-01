@@ -134,20 +134,7 @@ td .btn-group-sm > form > .btn {
     min-width: 220px;
 }
 
-/* ── Attendance/History.cshtml ──────────────────────────────────────────── */
-.att-wrap {
-    max-height: 75vh;
-    overflow: auto;
-}
-.att-wrap table {
-    border-collapse: separate;
-    border-spacing: 0;
-}
-.att-wrap thead tr th {
-    position: sticky;
-    top: 0;
-    z-index: 3;
-}
+/* ── Attendance/History.cshtml ── sticky first column ───────────────────── */
 .att-wrap thead tr th:first-child,
 .att-wrap tbody tr td:first-child {
     position: sticky;
@@ -163,20 +150,7 @@ td .btn-group-sm > form > .btn {
     border-right: 1px solid #dee2e6;
 }
 
-/* ── Evaluations/Index.cshtml ───────────────────────────────────────────── */
-.eval-wrap {
-    max-height: 75vh;
-    overflow: auto;
-}
-.eval-wrap table {
-    border-collapse: separate;
-    border-spacing: 0;
-}
-.eval-wrap thead tr th {
-    position: sticky;
-    top: 0;
-    z-index: 3;
-}
+/* ── Evaluations/Index.cshtml ── sticky first column ────────────────────── */
 .eval-wrap thead tr th:first-child,
 .eval-wrap tbody tr td:first-child {
     position: sticky;
@@ -243,20 +217,22 @@ td .btn-group-sm > form > .btn {
     background: rgba(13,110,253,.04);
 }
 
-/* ── Draw/History.cshtml ───────────────────────────────────────────────── */
-.history-wrap {
+/* ── Shared scrollable table with sticky header ─────────────────────────── */
+.table-scroll-wrap {
     max-height: 75vh;
     overflow: auto;
 }
-.history-wrap table {
+.table-scroll-wrap table {
     border-collapse: separate;
     border-spacing: 0;
 }
-.history-wrap thead tr th {
+.table-scroll-wrap thead tr th {
     position: sticky;
     top: 0;
     z-index: 3;
 }
+
+/* ── Draw/History.cshtml ───────────────────────────────────────────────── */
 .history-table th:nth-child(2),
 .history-table td:nth-child(2),
 .history-table th:nth-child(3),
@@ -264,6 +240,10 @@ td .btn-group-sm > form > .btn {
     width: 20%;
 }
 
+/* ── Attendance/Record.cshtml ── shorter scroll region ─────────────────── */
+.attendance-record-wrap {
+    max-height: 65vh;
+}
 /* ── CustomExport/Index.cshtml ──────────────────────────────────────────── */
 .export-card { cursor: pointer; display: block; }
 .section-card,

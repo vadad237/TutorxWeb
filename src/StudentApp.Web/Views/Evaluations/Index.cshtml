@@ -1,5 +1,7 @@
 @model EvaluationIndexVm
-@{ ViewData["Title"] = "Hodnotenia";}
+@{
+    ViewData["Title"] = "Hodnotenia";
+}
 
 @if ((bool?)ViewBag.NoGroupSelected == true)
 {
@@ -8,138 +10,154 @@
 else
 {
 
-<div class="mb-3 d-flex justify-content-between align-items-center">
-    <h2>Hodnotenia &mdash; @Model.GroupName</h2>
-</div>
-
-@if (Model.Students.Any() && Model.Tasks.Any())
-{
-    var activities = Model.Tasks.GroupBy(t => t.ActivityId)
-        .Select(g => (ActivityId: g.Key, ActivityName: g.First().ActivityName, Tasks: g.ToList()))
-        .ToList();
-
-    <div class="mb-2 row g-2 align-items-center">
-        <div class="col-auto">
-            <div class="input-group input-group-sm">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input type="search" id="studentSearch" class="form-control"
-                       placeholder="Hľadať študenta…" autocomplete="off" style="min-width:220px;" />
-            </div>
-        </div>
-        <div class="col-auto">
-            <select id="activityFilterSelect" class="form-select form-select-sm" style="min-width:200px; max-width:300px;">
-                <option value="">Všetky aktivity</option>
-                @foreach (var act in activities)
-                {
-                    <option value="@act.ActivityId">@act.ActivityName</option>
-                }
-            </select>
-        </div>
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+        <h2>Hodnotenia &mdash; @Model.GroupName</h2>
     </div>
-    <div class="table-responsive eval-wrap">
-        <table class="table table-bordered table-sm" id="evalTable">
-            <thead>
-                <tr class="table-dark">
-                    <th data-sort="text" style="min-width:180px; background:#212529;">Študent<span class="sort-icon"></span></th>
+
+    @if (Model.Students.Any() && Model.Tasks.Any())
+    {
+        var activities = Model.Tasks.GroupBy(t => t.ActivityId)
+            .Select(g => (ActivityId: g.Key, ActivityName: g.First().ActivityName, Tasks: g.ToList()))
+            .ToList();
+
+        bool ActivityHasNumberedTasks(int activityId) =>
+            Model.Students.Any(s => !string.IsNullOrEmpty(Model.NumberedTaskCounts.GetValueOrDefault((s.Id, activityId))));
+
+        <div class="mb-2 row g-2 align-items-center">
+            <div class="col-auto">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="search" id="studentSearch" class="form-control"
+                           placeholder="Hľadať študenta…" autocomplete="off" style="min-width:220px;" />
+                </div>
+            </div>
+            <div class="col-auto">
+                <select id="activityFilterSelect" class="form-select form-select-sm" style="min-width:200px; max-width:300px;">
+                    <option value="">Všetky aktivity</option>
                     @foreach (var act in activities)
                     {
-                        @foreach (var t in act.Tasks)
-                        {
-                            <th class="text-center @(t.IsPresentation ? "table-info" : "")" style="min-width:90px;"
-                                data-activity-id="@act.ActivityId">
-                                <div class="small fw-normal @(t.IsPresentation ? "text-dark opacity-75" : "text-white-50")">@t.ActivityName</div>
-                                <div>@t.Title</div>
-                                @if (t.MaxScore.HasValue)
-                                {
-                                    <div><span class="badge bg-secondary" style="font-size:.65rem;">max: @t.MaxScore.Value.ToString("0.##")</span></div>
-                                }
-                                @if (t.IsPresentation)
-                                {
-                                    <div><span class="badge bg-primary" style="font-size:.65rem;">prezentácia</span></div>
-                                }
-                            </th>
-                        }
-                        <th class="text-center table-warning" style="min-width:70px;"
-                            data-activity-id="@act.ActivityId" data-sum-col="@act.ActivityId">
-                            <div class="small fw-normal text-dark opacity-75">@act.ActivityName</div>
-                            <div>Súčet</div>
-                        </th>
-                        <th class="text-center table-secondary" style="min-width:70px;"
-                            data-activity-id="@act.ActivityId">
-                            <div class="small fw-normal text-dark opacity-75">@act.ActivityName</div>
-                            <div>Zadania</div>
-                        </th>
+                        <option value="@act.ActivityId">@act.ActivityName</option>
                     }
-                    <th class="text-center table-success" style="min-width:70px;" data-total-col="1">
-                        <div>Celkom</div>
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var s in Model.Students)
-                {
-                    <tr>
-                        <td style="position:sticky; left:0; z-index:1; min-width:180px; background:#fff;"><a asp-controller="Students" asp-action="Details" asp-route-id="@s.Id">@s.FullName</a></td>
+                </select>
+            </div>
+        </div>
+        <div class="table-scroll-wrap eval-wrap">
+            <table class="table table-bordered table-sm" id="evalTable">
+                <thead>
+                    <tr class="table-dark">
+                        <th data-sort="text" style="min-width:180px; background:#212529;">Študent<span class="sort-icon"></span></th>
                         @foreach (var act in activities)
                         {
+                            @if (ActivityHasNumberedTasks(act.ActivityId))
+                            {
+                                <th class="text-center table-secondary" style="min-width:70px;"
+                                    data-activity-id="@act.ActivityId">
+                                    <div class="small fw-normal text-dark opacity-75">@act.ActivityName</div>
+                                    <div>Zadania</div>
+                                </th>
+                            }
                             @foreach (var t in act.Tasks)
                             {
-                                var key = (s.Id, t.Id);
-                                <td class="text-center" data-activity-id="@act.ActivityId">
-                                    @if (Model.Scores.TryGetValue(key, out var score))
+                                <th class="text-center @(t.IsPresentation ? "table-info" : "")" style="min-width:90px;"
+                                    data-activity-id="@act.ActivityId">
+                                    <div class="small fw-normal @(t.IsPresentation ? "text-dark opacity-75" : "text-white-50")">@t.ActivityName</div>
+                                    <div>@t.Title</div>
+                                    @if (t.MaxScore.HasValue)
                                     {
-                                        var evalId = Model.EvaluationIds.GetValueOrDefault(key);
-                                        <a asp-action="Edit" asp-route-id="@evalId" class="text-decoration-none eval-nav-link">
-                                            @score.ToString("F2")
-                                        </a>
+                                        <div><span class="badge bg-secondary" style="font-size:.65rem;">max: @t.MaxScore.Value.ToString("0.##")</span></div>
                                     }
-                                    else
+                                    @if (t.IsPresentation)
                                     {
-                                        if (Model.AssignedStudentTasks.Contains((s.Id, t.Id)))
+                                        <div><span class="badge bg-primary" style="font-size:.65rem;">prezentácia</span></div>
+                                    }
+                                </th>
+                            }
+                            <th class="text-center table-warning" style="min-width:70px;"
+                                data-activity-id="@act.ActivityId" data-sum-col="@act.ActivityId">
+                                <div class="small fw-normal text-dark opacity-75">@act.ActivityName</div>
+                                <div>Súčet</div>
+                            </th>
+                        }
+                        <th class="text-center table-success" style="min-width:70px;" data-total-col="1">
+                            <div>Celkom</div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model.Students)
+                    {
+                        <tr>
+                            <td style="position:sticky; left:0; z-index:1; min-width:180px; background:#fff;"><a asp-controller="Students" asp-action="Details" asp-route-id="@s.Id">@s.FullName</a></td>
+                            @foreach (var act in activities)
+                            {
+                                @if (ActivityHasNumberedTasks(act.ActivityId))
+                                {
+                                    <td class="text-center table-secondary" data-activity-id="@act.ActivityId">
+                                        @{
+                                            var nVal = Model.NumberedTaskCounts.GetValueOrDefault((s.Id, act.ActivityId));
+                                        }
+                                        @(string.IsNullOrEmpty(nVal) ? "-" : nVal)
+                                    </td>
+                                }
+                                @foreach (var t in act.Tasks)
+                                {
+                                    var key = (s.Id, t.Id);
+                                    <td class="text-center" data-activity-id="@act.ActivityId">
+                                        @if (Model.Scores.TryGetValue(key, out var score))
                                         {
-                                        <a asp-action="Create" asp-route-studentId="@s.Id" asp-route-taskItemId="@t.Id"
-                                           class="text-decoration-none eval-nav-link">
-                                            <span class="badge bg-light text-secondary border border-dashed" style="font-size:.8rem;letter-spacing:.05em;">+</span>
-                                        </a>
+                                            var evalId = Model.EvaluationIds.GetValueOrDefault(key);
+                                            <a asp-action="Edit" asp-route-id="@evalId" class="text-decoration-none eval-nav-link">
+                                                @score.ToString("F2")
+                                            </a>
                                         }
                                         else
                                         {
-                                            <span class="text-muted">-</span>
+                                            if (Model.AssignedStudentTasks.Contains((s.Id, t.Id)))
+                                            {
+                                                <a asp-action="Create" asp-route-studentId="@s.Id" asp-route-taskItemId="@t.Id"
+                                                   class="text-decoration-none eval-nav-link">
+                                                    <span class="badge bg-light text-secondary border border-dashed" style="font-size:.8rem;letter-spacing:.05em;">+</span>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
                                         }
-                                    }
+                                    </td>
+                                }
+                                <td class="text-center table-warning fw-bold" data-activity-id="@act.ActivityId" data-sum-col="@act.ActivityId">
+                                    @(Model.ActivityStudentSums.TryGetValue((s.Id, act.ActivityId), out var aSum) ? aSum.ToString("F2") : "-")
                                 </td>
                             }
-                            <td class="text-center table-warning fw-bold" data-activity-id="@act.ActivityId" data-sum-col="@act.ActivityId">
-                                @(Model.ActivityStudentSums.TryGetValue((s.Id, act.ActivityId), out var aSum) ? aSum.ToString("F2") : "-")
+                            @{
+                                var totalSum = activities.Sum(a =>
+                                    Model.ActivityStudentSums.TryGetValue((s.Id, a.ActivityId), out var s2) ? s2 : 0m);
+                            }
+                            <td class="text-center table-success fw-bold" data-total-col="1">
+                                @(totalSum > 0 ? totalSum.ToString("F2") : "-")
                             </td>
-                            <td class="text-center table-secondary" data-activity-id="@act.ActivityId">
-                                @{ var nVal = Model.NumberedTaskCounts.GetValueOrDefault((s.Id, act.ActivityId)); }
-                                @(string.IsNullOrEmpty(nVal) ? "-" : nVal)
-                            </td>
-                        }
-                        @{
-                            var totalSum = activities.Sum(a =>
-                                Model.ActivityStudentSums.TryGetValue((s.Id, a.ActivityId), out var s2) ? s2 : 0m);
-                        }
-                        <td class="text-center table-success fw-bold" data-total-col="1">
-                            @(totalSum > 0 ? totalSum.ToString("F2") : "-")
-                        </td>
-                    </tr>
-                }
-            </tbody>
+                        </tr>
+                    }
+                </tbody>
 
-        </table>
-    </div>
-}
-else
-{
-    <div class="alert alert-info">
-        @if (!Model.Students.Any())
-        { <span>Žiadni aktívni študenti v tejto skupine.</span> }
-        else
-        { <span>Žiadne úlohy ani prezentácie pre aktivity v tejto skupine.</span> }
-    </div>
-}
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            @if (!Model.Students.Any())
+            {
+                <span>Žiadni aktívni študenti v tejto skupine.</span>
+            }
+            else
+            {
+
+                <span>Žiadne úlohy ani prezentácie pre aktivity v tejto skupine.</span>
+            }
+        </div>
+    }
 
 
 }

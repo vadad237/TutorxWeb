@@ -174,6 +174,9 @@ public class CustomExportService : ICustomExportService
                 var actName = tasks.FirstOrDefault(t => t.ActivityId == actId)?.Activity.Name
                            ?? taskPresentations.First(t => t.ActivityId == actId).Activity.Name;
 
+                if (request.IncludeTasksSummary)
+                    headers.Add(($"{actName} › Zadania", "tasks-numbered"));
+
                 if (request.IncludeTasksDetails)
                 {
                     foreach (var t in tasks.Where(t => t.ActivityId == actId))
@@ -191,10 +194,7 @@ public class CustomExportService : ICustomExportService
                     }
                 }
                 if (request.IncludeTasksSummary)
-                {
-                    headers.Add(($"{actName} › Zadania", "tasks-numbered"));
                     headers.Add(($"{actName} › Celkom", "tasks-sum"));
-                }
             }
             if (request.IncludeTasksSummary)
             {
@@ -310,7 +310,7 @@ public class CustomExportService : ICustomExportService
                 var allActivityIds = tasks.Select(t => t.ActivityId)
                     .Union(taskPresentations.Select(t => t.ActivityId))
                     .Distinct()
-                    .OrderByDescending(id => tasks.FirstOrDefault(t => t.ActivityId == id)?.Activity.CreatedAt
+                    .OrderBy(id => tasks.FirstOrDefault(t => t.ActivityId == id)?.Activity.CreatedAt
                                  ?? taskPresentations.First(t => t.ActivityId == id).Activity.CreatedAt)
                     .ToList();
 
@@ -318,6 +318,14 @@ public class CustomExportService : ICustomExportService
                 {
                     decimal actSum = 0;
                     bool hasAny = false;
+
+                    if (request.IncludeTasksSummary)
+                    {
+                        var numberedTitles = numberedTaskMap.GetValueOrDefault((student.Id, actId));
+                        row.Add(numberedTitles is { Count: > 0 }
+                            ? string.Join(", ", numberedTitles.OrderBy(t => t))
+                            : "");
+                    }
 
                     if (request.IncludeTasksDetails)
                     {
@@ -360,13 +368,8 @@ public class CustomExportService : ICustomExportService
                     }
 
                     if (request.IncludeTasksSummary)
-                    {
-                        var numberedTitles = numberedTaskMap.GetValueOrDefault((student.Id, actId));
-                        row.Add(numberedTitles is { Count: > 0 }
-                            ? string.Join(", ", numberedTitles.OrderBy(t => t))
-                            : "");
                         row.Add(hasAny ? actSum.ToString("F2") : "");
-                    }
+
                     grandTotal += actSum;
                     if (hasAny) hasGrandAny = true;
                 }
