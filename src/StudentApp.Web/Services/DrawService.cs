@@ -40,17 +40,27 @@ public class DrawService : IDrawService
         }
 
         var pickedId = remaining[Random.Shared.Next(remaining.Count)];
+        var batchId = await GetNextDrawBatchIdAsync(groupId);
 
         _db.DrawHistories.Add(new DrawHistory
         {
             StudentId = pickedId,
             GroupId = groupId,
-            CycleNumber = currentCycle
+            CycleNumber = currentCycle,
+            DrawBatchId = batchId
         });
         await _db.SaveChangesAsync();
 
         var student = await _db.Students.FindAsync(pickedId);
         return new DrawResultDto(pickedId, student!.FullName, currentCycle, remaining.Count - 1);
+    }
+
+    public async Task<int> GetNextDrawBatchIdAsync(int groupId)
+    {
+        var max = await _db.DrawHistories
+            .Where(d => d.GroupId == groupId)
+            .MaxAsync(d => (int?)d.DrawBatchId) ?? 0;
+        return max + 1;
     }
 
     public async Task<List<DrawHistoryDto>> GetHistoryAsync(int groupId, int limit = 50)
@@ -74,11 +84,11 @@ public class DrawService : IDrawService
             .Include(d => d.TaskItem)
             .ToListAsync();
 
-        // Group by (ActivityId, TaskItemId, DrawnAt tick) so all students drawn in one
-        // batch share the same timestamp; bag draws (both null) are individual rows.
+        // Group by DrawBatchId — every draw call assigns a unique batch id so each call
+        // produces its own row; all students drawn in one call share the same batch id.
         var batches = records
-            .GroupBy(d => (d.ActivityId, d.TaskItemId, d.DrawnAt.Ticks))
-            .OrderByDescending(g => g.Key.Ticks)
+            .GroupBy(d => d.DrawBatchId)
+            .OrderByDescending(g => g.Max(d => d.DrawnAt.Ticks))
             .Select(g => new DrawBatchDto(
                 g.First().Activity?.Name,
                 g.First().TaskItem?.Title,
@@ -88,7 +98,7 @@ public class DrawService : IDrawService
                      d.Student.FirstName + " " + d.Student.LastName,
                      d.Role.HasValue ? (byte)d.Role.Value : null))
                  .ToList(),
-                g.Key.Ticks == 0 ? DateTime.MinValue : new DateTime(g.Key.Ticks, DateTimeKind.Utc)
+                new DateTime(g.Max(d => d.DrawnAt.Ticks), DateTimeKind.Utc)
             ))
             .ToList();
 

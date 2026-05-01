@@ -8,10 +8,12 @@ namespace StudentApp.Web.Services;
 public class AssignmentService : IAssignmentService
 {
     private readonly AppDbContext _db;
+    private readonly IDrawService _drawService;
 
-    public AssignmentService(AppDbContext db)
+    public AssignmentService(AppDbContext db, IDrawService drawService)
     {
         _db = db;
+        _drawService = drawService;
     }
 
     // Delegates to AssignStudentsAsync — kept for interface compatibility
@@ -204,8 +206,8 @@ public class AssignmentService : IAssignmentService
             .Where(d => d.GroupId == activity.GroupId)
             .MaxAsync(d => (int?)d.CycleNumber) ?? 1;
 
-        // Use a single shared timestamp so all students in this batch are grouped together
         var drawnAt = DateTime.UtcNow;
+        var batchId = await _drawService.GetNextDrawBatchIdAsync(activity.GroupId);
 
         foreach (var student in drawn)
         {
@@ -221,7 +223,8 @@ public class AssignmentService : IAssignmentService
                 GroupId = activity.GroupId,
                 ActivityId = activityId,
                 CycleNumber = currentCycle,
-                DrawnAt = drawnAt
+                DrawnAt = drawnAt,
+                DrawBatchId = batchId
             });
         }
 
@@ -230,7 +233,7 @@ public class AssignmentService : IAssignmentService
     }
 
     // Draw N random students for a presentation, ADDING to existing PresentationStudents
-    public async Task<List<Student>> DrawAddForPresentationAsync(int taskId, int count, PresentationRole role, bool includeAlreadyAssigned = false, List<int>? allowedStudentIds = null)
+    public async Task<(List<Student> Students, int BatchId)> DrawAddForPresentationAsync(int taskId, int count, PresentationRole role, bool includeAlreadyAssigned = false, List<int>? allowedStudentIds = null, int? batchId = null)
     {
         var task = await _db.TaskItems
             .Include(t => t.Activity).ThenInclude(a => a.Assignments).ThenInclude(a => a.Student)
@@ -269,13 +272,16 @@ public class AssignmentService : IAssignmentService
         var drawCount = Math.Min(count, eligible.Count);
         var drawn = eligible.OrderBy(_ => Random.Shared.Next()).Take(drawCount).ToList();
 
-        // Use a single shared timestamp so all students in this batch are grouped together
         var drawnAt = DateTime.UtcNow;
 
         // Determine the current draw cycle for this group
         var currentCycle = await _db.DrawHistories
             .Where(d => d.GroupId == task.Activity.GroupId)
             .MaxAsync(d => (int?)d.CycleNumber) ?? 1;
+
+        // Use the provided batchId (from a previous role draw in the same session),
+        // or allocate a new one if this is the first draw for this presentation.
+        var resolvedBatchId = batchId ?? await _drawService.GetNextDrawBatchIdAsync(task.Activity.GroupId);
 
         foreach (var student in drawn)
         {
@@ -294,11 +300,12 @@ public class AssignmentService : IAssignmentService
                 TaskItemId = taskId,
                 CycleNumber = currentCycle,
                 DrawnAt = drawnAt,
+                DrawBatchId = resolvedBatchId,
                 Role = role
             });
         }
 
         await _db.SaveChangesAsync();
-        return drawn;
+        return (drawn, resolvedBatchId);
     }
 }

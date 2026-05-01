@@ -1,5 +1,11 @@
 @model DrawHistoryVm
-@{ ViewData["Title"] = "História žrebovania"; }
+@{
+    ViewData["Title"] = "História žrebovania";
+    var tz = TimeZoneInfo.FindSystemTimeZoneById(
+        System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)
+            ? "Central European Standard Time"
+            : "Europe/Prague");
+}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>História žrebovania &mdash; @Model.GroupName</h2>
@@ -12,12 +18,13 @@
 }
 else
 {
-    <table class="table table-striped table-hover align-middle mb-4">
+    <div class="history-wrap">
+    <table class="table table-striped table-hover align-middle mb-4 history-table">
         <thead class="table-dark">
             <tr>
                 <th>#</th>
-                <th>Prezentácia</th>
                 <th>Aktivita</th>
+                <th>Prezentácia</th>
                 <th>Žrebovaní študenti</th>
                 <th>Dátum a čas</th>
             </tr>
@@ -28,30 +35,49 @@ else
             {
                 <tr>
                     <td>@(idx++)</td>
+                    <td>@(b.ActivityName ?? "—")</td>
                     <td>@(b.PresentationTitle ?? "-")</td>
-                    <td>@(b.PresentationTitle == null ? (b.ActivityName ?? "—") : "-")</td>
                     <td>
-                        @foreach (var s in b.Students)
+                        @if (b.PresentationTitle != null)
                         {
-                            <span class="badge bg-secondary me-1">@s.Name</span>
-                            @if (b.PresentationTitle != null)
+                            var presentees = b.Students.Where(s => s.PresRole == 0).ToList();
+                            var substitutes = b.Students.Where(s => s.PresRole == 1).ToList();
+                            var unroled = b.Students.Where(s => s.PresRole == null).ToList();
+                            @if (presentees.Any())
                             {
-                                @if (s.PresRole == 0)
+                                <span class="badge bg-primary me-1">Prezentujúci</span>
+                                @foreach (var s in presentees)
                                 {
-                                    <span class="badge bg-primary me-2">Prezentujúci</span>
+                                    <span class="badge bg-secondary me-1">@s.Name</span>
                                 }
-                                else if (s.PresRole == 1)
+                            }
+                            @if (substitutes.Any())
+                            {
+                                <span class="badge bg-warning text-dark me-1">Náhradník</span>
+                                @foreach (var s in substitutes)
                                 {
-                                    <span class="badge bg-warning text-dark me-2">Náhradník</span>
+                                    <span class="badge bg-secondary me-1">@s.Name</span>
                                 }
+                            }
+                            @foreach (var s in unroled)
+                            {
+                                <span class="badge bg-secondary me-1">@s.Name</span>
+                            }
+                        }
+                        else
+                        {
+                            @foreach (var s in b.Students)
+                            {
+                                <span class="badge bg-secondary me-1">@s.Name</span>
                             }
                         }
                     </td>
-                    <td class="text-nowrap">@b.DrawnAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+                    <td class="text-nowrap">@TimeZoneInfo.ConvertTimeFromUtc(b.DrawnAt, tz).ToString("dd.MM.yyyy HH:mm:ss")</td>
                 </tr>
             }
         </tbody>
     </table>
+    </div>
 }
 
 @if (Model.TotalPages > 1)

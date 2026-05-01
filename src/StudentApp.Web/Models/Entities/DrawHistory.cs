@@ -6,6 +6,7 @@ public class DrawHistory
     public int StudentId { get; set; }
     public int GroupId { get; set; }
     public int CycleNumber { get; set; }
+    public int DrawBatchId { get; set; }
     public DateTime DrawnAt { get; set; } = DateTime.UtcNow;
 
     public int? ActivityId { get; set; }

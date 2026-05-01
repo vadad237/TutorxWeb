@@ -243,6 +243,27 @@ td .btn-group-sm > form > .btn {
     background: rgba(13,110,253,.04);
 }
 
+/* ── Draw/History.cshtml ───────────────────────────────────────────────── */
+.history-wrap {
+    max-height: 75vh;
+    overflow: auto;
+}
+.history-wrap table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.history-wrap thead tr th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+.history-table th:nth-child(2),
+.history-table td:nth-child(2),
+.history-table th:nth-child(3),
+.history-table td:nth-child(3) {
+    width: 20%;
+}
+
 /* ── CustomExport/Index.cshtml ──────────────────────────────────────────── */
 .export-card { cursor: pointer; display: block; }
 .section-card,

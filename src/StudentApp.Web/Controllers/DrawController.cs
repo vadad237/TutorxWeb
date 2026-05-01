@@ -105,13 +105,13 @@ public class DrawController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> DrawForPresentation(int taskId, int count, int role = 0, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
+    public async Task<IActionResult> DrawForPresentation(int taskId, int count, int role = 0, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null, int? batchId = null)
     {
         try
         {
-            var drawn = await _assignmentService.DrawAddForPresentationAsync(taskId, count, (PresentationRole)role, includeAlreadyAssigned, allowedStudentIds);
+            var (drawn, usedBatchId) = await _assignmentService.DrawAddForPresentationAsync(taskId, count, (PresentationRole)role, includeAlreadyAssigned, allowedStudentIds, batchId);
             var names = drawn.Select(s => $"{s.FirstName} {s.LastName}").ToList();
-            return Json(new { success = true, drawnNames = names });
+            return Json(new { success = true, drawnNames = names, batchId = usedBatchId });
         }
         catch (Exception ex)
         {

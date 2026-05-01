@@ -657,7 +657,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 var drawBodyS = 'taskId=' + selectedId + '&count=' + count + '&role=1'
-                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
+                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '')
+                    + (dataP.batchId != null ? '&batchId=' + dataP.batchId : '');
                 subAllowedIds.forEach(function (sid) { drawBodyS += '&allowedStudentIds=' + encodeURIComponent(sid); });
                 var respS = await fetch('/Draw/DrawForPresentation', {
                     method: 'POST',
