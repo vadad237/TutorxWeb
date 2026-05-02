@@ -166,12 +166,6 @@ public class AssignmentService : IAssignmentService
     // Draw N random students for the activity, ADDING to existing (no reset)
     public async Task<List<Student>> DrawAddForActivityAsync(int activityId, int count, bool includeAlreadyAssigned = false, List<int>? allowedStudentIds = null)
     {
-        var exists = await _db.Activities.AnyAsync(a => a.Id == activityId);
-        var existsIncArchived = await _db.Activities.IgnoreQueryFilters().AnyAsync(a => a.Id == activityId);
-        var allIds = await _db.Activities.Select(a => a.Id).ToListAsync();
-        throw new InvalidOperationException(
-            $"DEBUG activityId={activityId} exists={exists} existsIncArchived={existsIncArchived} allActivityIds=[{string.Join(",", allIds)}]");
-
         var activity = await _db.Activities
             .Include(a => a.Group).ThenInclude(g => g.Students)
             .FirstOrDefaultAsync(a => a.Id == activityId)
