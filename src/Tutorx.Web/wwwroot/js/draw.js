@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var presentations   = __d.presentations || [];
     var initialPresIds  = __d.initialPresIds  || [];
     var initialPresRole = __d.initialPresRole || '0';
+    console.log('[draw] __drawData', JSON.stringify(window.__drawData));
+    console.log('[draw] activities', JSON.stringify(activities));
 
     var cardCounter   = 0;
     var isDrawingAll  = false;
@@ -672,12 +674,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
             }
             allowedIds.forEach(function (sid) { drawBody += '&allowedStudentIds=' + encodeURIComponent(sid); });
+            console.log('[draw] POST', drawUrl, drawBody);
             var resp = await fetch(drawUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: drawBody
             });
-            return resp.json();
+            var data = await resp.json();
+            console.log('[draw] response', JSON.stringify(data));
+            return data;
         }
 
         try {

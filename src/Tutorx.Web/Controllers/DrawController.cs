@@ -11,13 +11,15 @@ public class DrawController : Controller
     private readonly IActivityService _activityService;
     private readonly IDrawService _drawService;
     private readonly IAssignmentService _assignmentService;
+    private readonly ILogger<DrawController> _logger;
 
-    public DrawController(IGroupService groupService, IActivityService activityService, IDrawService drawService, IAssignmentService assignmentService)
+    public DrawController(IGroupService groupService, IActivityService activityService, IDrawService drawService, IAssignmentService assignmentService, ILogger<DrawController> logger)
     {
         _groupService = groupService;
         _activityService = activityService;
         _drawService = drawService;
         _assignmentService = assignmentService;
+        _logger = logger;
     }
 
     private async Task PopulateActiveGroupAsync()
@@ -88,6 +90,8 @@ public class DrawController : Controller
     [HttpPost]
     public async Task<IActionResult> DrawForActivity(int activityId, int count, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
     {
+        _logger.LogInformation("DrawForActivity called: activityId={ActivityId}, count={Count}, includeAlreadyAssigned={Include}, allowedStudentIds=[{Ids}]",
+            activityId, count, includeAlreadyAssigned, string.Join(",", allowedStudentIds ?? []));
         try
         {
             var drawn = await _assignmentService.DrawAddForActivityAsync(activityId, count, includeAlreadyAssigned, allowedStudentIds);
@@ -96,6 +100,7 @@ public class DrawController : Controller
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "DrawForActivity failed: activityId={ActivityId}", activityId);
             return Json(new { success = false, message = ex.Message });
         }
     }
@@ -103,6 +108,8 @@ public class DrawController : Controller
     [HttpPost]
     public async Task<IActionResult> DrawForPresentation(int taskId, int count, int role = 0, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null, int? batchId = null)
     {
+        _logger.LogInformation("DrawForPresentation called: taskId={TaskId}, count={Count}, role={Role}, includeAlreadyAssigned={Include}",
+            taskId, count, role, includeAlreadyAssigned);
         try
         {
             var (drawn, usedBatchId) = await _assignmentService.DrawAddForPresentationAsync(taskId, count, (PresentationRole)role, includeAlreadyAssigned, allowedStudentIds, batchId);
@@ -111,6 +118,7 @@ public class DrawController : Controller
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "DrawForPresentation failed: taskId={TaskId}", taskId);
             return Json(new { success = false, message = ex.Message });
         }
     }
