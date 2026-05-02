@@ -90,6 +90,10 @@ public class DrawController : Controller
     [HttpPost]
     public async Task<IActionResult> DrawForActivity(int activityId, int count, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
     {
+        Request.EnableBuffering();
+        var rawBody = await new System.IO.StreamReader(Request.Body).ReadToEndAsync();
+        Request.Body.Position = 0;
+        _logger.LogInformation("DrawForActivity raw body: [{RawBody}]", rawBody);
         _logger.LogInformation("DrawForActivity called: activityId={ActivityId}, count={Count}, includeAlreadyAssigned={Include}, allowedStudentIds=[{Ids}]",
             activityId, count, includeAlreadyAssigned, string.Join(",", allowedStudentIds ?? []));
         try
