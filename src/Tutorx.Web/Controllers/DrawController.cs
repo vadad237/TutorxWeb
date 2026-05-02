@@ -88,14 +88,9 @@ public class DrawController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> DrawForActivity(int activityId, int count, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
+    public async Task<IActionResult> DrawForActivity([FromForm] int activityId, [FromForm] int count, [FromForm] bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
     {
-        Request.EnableBuffering();
-        var rawBody = await new System.IO.StreamReader(Request.Body).ReadToEndAsync();
-        Request.Body.Position = 0;
-        _logger.LogInformation("DrawForActivity raw body: [{RawBody}]", rawBody);
-        _logger.LogInformation("DrawForActivity called: activityId={ActivityId}, count={Count}, includeAlreadyAssigned={Include}, allowedStudentIds=[{Ids}]",
-            activityId, count, includeAlreadyAssigned, string.Join(",", allowedStudentIds ?? []));
+        _logger.LogInformation("DrawForActivity called: activityId={ActivityId}, count={Count}", activityId, count);
         try
         {
             var drawn = await _assignmentService.DrawAddForActivityAsync(activityId, count, includeAlreadyAssigned, allowedStudentIds);
@@ -110,7 +105,7 @@ public class DrawController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> DrawForPresentation(int taskId, int count, int role = 0, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null, int? batchId = null)
+    public async Task<IActionResult> DrawForPresentation([FromForm] int taskId, [FromForm] int count, [FromForm] int role = 0, [FromForm] bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null, [FromForm] int? batchId = null)
     {
         _logger.LogInformation("DrawForPresentation called: taskId={TaskId}, count={Count}, role={Role}, includeAlreadyAssigned={Include}",
             taskId, count, role, includeAlreadyAssigned);
