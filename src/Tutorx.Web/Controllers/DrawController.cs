@@ -87,37 +87,40 @@ public class DrawController : Controller
         return View(vm);
     }
 
+    public record DrawActivityRequest(int ActivityId, int Count, bool IncludeAlreadyAssigned = false, List<int>? AllowedStudentIds = null);
+    public record DrawPresentationRequest(int TaskId, int Count, int Role = 0, bool IncludeAlreadyAssigned = false, List<int>? AllowedStudentIds = null, int? BatchId = null);
+
     [HttpPost]
-    public async Task<IActionResult> DrawForActivity([FromForm] int activityId, [FromForm] int count, [FromForm] bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
+    public async Task<IActionResult> DrawForActivity([FromBody] DrawActivityRequest req)
     {
-        _logger.LogInformation("DrawForActivity called: activityId={ActivityId}, count={Count}", activityId, count);
+        _logger.LogInformation("DrawForActivity called: activityId={ActivityId}, count={Count}", req.ActivityId, req.Count);
         try
         {
-            var drawn = await _assignmentService.DrawAddForActivityAsync(activityId, count, includeAlreadyAssigned, allowedStudentIds);
+            var drawn = await _assignmentService.DrawAddForActivityAsync(req.ActivityId, req.Count, req.IncludeAlreadyAssigned, req.AllowedStudentIds);
             var names = drawn.Select(s => $"{s.FirstName} {s.LastName}").ToList();
             return Json(new { success = true, drawnNames = names });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "DrawForActivity failed: activityId={ActivityId}", activityId);
+            _logger.LogError(ex, "DrawForActivity failed: activityId={ActivityId}", req.ActivityId);
             return Json(new { success = false, message = ex.Message });
         }
     }
 
     [HttpPost]
-    public async Task<IActionResult> DrawForPresentation([FromForm] int taskId, [FromForm] int count, [FromForm] int role = 0, [FromForm] bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null, [FromForm] int? batchId = null)
+    public async Task<IActionResult> DrawForPresentation([FromBody] DrawPresentationRequest req)
     {
-        _logger.LogInformation("DrawForPresentation called: taskId={TaskId}, count={Count}, role={Role}, includeAlreadyAssigned={Include}",
-            taskId, count, role, includeAlreadyAssigned);
+        _logger.LogInformation("DrawForPresentation called: taskId={TaskId}, count={Count}, role={Role}",
+            req.TaskId, req.Count, req.Role);
         try
         {
-            var (drawn, usedBatchId) = await _assignmentService.DrawAddForPresentationAsync(taskId, count, (PresentationRole)role, includeAlreadyAssigned, allowedStudentIds, batchId);
+            var (drawn, usedBatchId) = await _assignmentService.DrawAddForPresentationAsync(req.TaskId, req.Count, (PresentationRole)req.Role, req.IncludeAlreadyAssigned, req.AllowedStudentIds, req.BatchId);
             var names = drawn.Select(s => $"{s.FirstName} {s.LastName}").ToList();
             return Json(new { success = true, drawnNames = names, batchId = usedBatchId });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "DrawForPresentation failed: taskId={TaskId}", taskId);
+            _logger.LogError(ex, "DrawForPresentation failed: taskId={TaskId}", req.TaskId);
             return Json(new { success = false, message = ex.Message });
         }
     }

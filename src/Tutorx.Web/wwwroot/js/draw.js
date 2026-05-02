@@ -663,22 +663,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Helper: draw for a specific role and return names, or null on error
         async function drawForRole(role) {
-            var drawUrl, drawBody;
+            var drawUrl, payload;
+            var allowedIdsInt = allowedIds.map(function (sid) { return parseInt(sid, 10); });
             if (cType === 'presentation') {
-                drawUrl  = '/Draw/DrawForPresentation';
-                drawBody = 'taskId=' + selectedId + '&count=' + count + '&role=' + role
-                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
+                drawUrl = '/Draw/DrawForPresentation';
+                payload = { taskId: selectedId, count: count, role: role, includeAlreadyAssigned: includeAssigned, allowedStudentIds: allowedIdsInt };
             } else {
-                drawUrl  = '/Draw/DrawForActivity';
-                drawBody = 'activityId=' + selectedId + '&count=' + count
-                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
+                drawUrl = '/Draw/DrawForActivity';
+                payload = { activityId: selectedId, count: count, includeAlreadyAssigned: includeAssigned, allowedStudentIds: allowedIdsInt };
             }
-            allowedIds.forEach(function (sid) { drawBody += '&allowedStudentIds=' + encodeURIComponent(sid); });
-            console.log('[draw] POST', drawUrl, drawBody);
+            console.log('[draw] POST', drawUrl, JSON.stringify(payload));
             var resp = await fetch(drawUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: drawBody
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
             var data = await resp.json();
             console.log('[draw] response', JSON.stringify(data));
@@ -745,14 +743,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                var drawBodyS = 'taskId=' + selectedId + '&count=' + count + '&role=1'
-                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '')
-                    + (dataP.batchId != null ? '&batchId=' + dataP.batchId : '');
-                subAllowedIds.forEach(function (sid) { drawBodyS += '&allowedStudentIds=' + encodeURIComponent(sid); });
+                var subPayload = {
+                    taskId: selectedId, count: count, role: 1,
+                    includeAlreadyAssigned: includeAssigned,
+                    allowedStudentIds: subAllowedIds.map(function (sid) { return parseInt(sid, 10); }),
+                    batchId: dataP.batchId != null ? dataP.batchId : null
+                };
                 var respS = await fetch('/Draw/DrawForPresentation', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: drawBodyS
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(subPayload)
                 });
                 var dataS = await respS.json();
 
