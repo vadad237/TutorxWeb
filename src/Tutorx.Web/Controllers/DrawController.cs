@@ -89,7 +89,7 @@ public class DrawController : Controller
 
     [HttpPost]
     [IgnoreAntiforgeryToken]
-    public async Task<IActionResult> DrawForActivity(int activityId, int count, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
+    public async Task<IActionResult> DrawForActivity([FromQuery] int activityId, [FromQuery] int count, [FromQuery] bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null)
     {
         _logger.LogInformation("DrawForActivity called: activityId={ActivityId}, count={Count}", activityId, count);
         try
@@ -107,7 +107,7 @@ public class DrawController : Controller
 
     [HttpPost]
     [IgnoreAntiforgeryToken]
-    public async Task<IActionResult> DrawForPresentation(int taskId, int count, int role = 0, bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null, int? batchId = null)
+    public async Task<IActionResult> DrawForPresentation([FromQuery] int taskId, [FromQuery] int count, [FromQuery] int role = 0, [FromQuery] bool includeAlreadyAssigned = false, [FromForm] List<int>? allowedStudentIds = null, [FromQuery] int? batchId = null)
     {
         _logger.LogInformation("DrawForPresentation called: taskId={TaskId}, count={Count}, role={Role}", taskId, count, role);
         try

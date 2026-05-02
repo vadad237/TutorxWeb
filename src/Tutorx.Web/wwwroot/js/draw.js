@@ -665,15 +665,19 @@ document.addEventListener('DOMContentLoaded', function () {
         async function drawForRole(role) {
             var drawUrl, drawBody;
             if (cType === 'presentation') {
-                drawUrl  = '/Draw/DrawForPresentation';
-                drawBody = 'taskId=' + selectedId + '&count=' + count + '&role=' + role
+                drawUrl  = '/Draw/DrawForPresentation?taskId=' + encodeURIComponent(selectedId)
+                    + '&count=' + encodeURIComponent(count)
+                    + '&role=' + encodeURIComponent(role)
                     + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
             } else {
-                drawUrl  = '/Draw/DrawForActivity';
-                drawBody = 'activityId=' + selectedId + '&count=' + count
+                drawUrl  = '/Draw/DrawForActivity?activityId=' + encodeURIComponent(selectedId)
+                    + '&count=' + encodeURIComponent(count)
                     + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
             }
-            allowedIds.forEach(function (sid) { drawBody += '&allowedStudentIds=' + encodeURIComponent(sid); });
+            drawBody = '';
+            allowedIds.forEach(function (sid) {
+                drawBody += (drawBody ? '&' : '') + 'allowedStudentIds=' + encodeURIComponent(sid);
+            });
             var resp = await fetch(drawUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -743,11 +747,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                var drawBodyS = 'taskId=' + selectedId + '&count=' + count + '&role=1'
+                var subUrl = '/Draw/DrawForPresentation?taskId=' + encodeURIComponent(selectedId)
+                    + '&count=' + encodeURIComponent(count)
+                    + '&role=1'
                     + (includeAssigned ? '&includeAlreadyAssigned=true' : '')
-                    + (dataP.batchId != null ? '&batchId=' + dataP.batchId : '');
-                subAllowedIds.forEach(function (sid) { drawBodyS += '&allowedStudentIds=' + encodeURIComponent(sid); });
-                var respS = await fetch('/Draw/DrawForPresentation', {
+                    + (dataP.batchId != null ? '&batchId=' + encodeURIComponent(dataP.batchId) : '');
+                var drawBodyS = '';
+                subAllowedIds.forEach(function (sid) {
+                    drawBodyS += (drawBodyS ? '&' : '') + 'allowedStudentIds=' + encodeURIComponent(sid);
+                });
+                var respS = await fetch(subUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: drawBodyS
