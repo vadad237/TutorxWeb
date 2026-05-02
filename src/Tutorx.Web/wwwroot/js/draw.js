@@ -1,18 +1,18 @@
 document.addEventListener('DOMContentLoaded', function () {
-    var drawData     = document.getElementById('draw-data');
     var cardsGrid    = document.getElementById('draw-cards');
     var addCardBtn   = document.getElementById('add-card-btn');
     var addPresCardBtn = document.getElementById('add-pres-card-btn');
     var drawAllBtn   = document.getElementById('draw-all-btn');
 
-    if (!drawData || !cardsGrid) return;
+    if (!cardsGrid) return;
 
-    var allNames        = JSON.parse(drawData.dataset.allNames  || '[]');
-    var activities      = JSON.parse(drawData.dataset.activities || '[]');
-    var initialIds      = JSON.parse(drawData.dataset.initialIds || '[]');
-    var presentations   = JSON.parse(drawData.dataset.presentations || '[]');
-    var initialPresIds  = JSON.parse(drawData.dataset.initialPresIds || '[]');
-    var initialPresRole = drawData.dataset.initialPresRole || '0';
+    var __d           = window.__drawData || {};
+    var allNames        = __d.allNames      || [];
+    var activities      = __d.activities    || [];
+    var initialIds      = __d.initialIds    || [];
+    var presentations   = __d.presentations || [];
+    var initialPresIds  = __d.initialPresIds  || [];
+    var initialPresRole = __d.initialPresRole || '0';
 
     var cardCounter   = 0;
     var isDrawingAll  = false;

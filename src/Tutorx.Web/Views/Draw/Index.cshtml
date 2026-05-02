@@ -15,7 +15,6 @@
         (ViewBag.InitialPresentationIds as List<int>) ?? new List<int>());
     var initialPresRole = (string)(ViewBag.InitialPresRole ?? "0");
 }
-
 @if (noGroup)
 {
     <partial name="_NoGroupSelected" />
@@ -57,13 +56,15 @@
     </button>
 </div>
 
-<div id="draw-data"
-     data-all-names='@Html.Raw(allNamesJson)'
-     data-activities='@Html.Raw(activitiesJson)'
-     data-initial-ids='@Html.Raw(initialIdsJson)'
-     data-presentations='@Html.Raw(presentationsJson)'
-     data-initial-pres-ids='@Html.Raw(initialPresIdsJson)'
-     data-initial-pres-role='@initialPresRole'
-     style="display:none"></div>
+<script>
+    window.__drawData = {
+        allNames:        @Html.Raw(allNamesJson),
+        activities:      @Html.Raw(activitiesJson),
+        initialIds:      @Html.Raw(initialIdsJson),
+        presentations:   @Html.Raw(presentationsJson),
+        initialPresIds:  @Html.Raw(initialPresIdsJson),
+        initialPresRole: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(initialPresRole))
+    };
+</script>
 
 <div class="row g-3" id="draw-cards"></div>
