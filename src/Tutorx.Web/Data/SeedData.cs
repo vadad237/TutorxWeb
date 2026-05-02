@@ -11,14 +11,18 @@ public static class SeedData
         var services = scope.ServiceProvider;
 
         var context = services.GetRequiredService<AppDbContext>();
-        await context.Database.EnsureCreatedAsync();
 
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var config = app.Configuration;
 
         // Seed admin user
-        var adminUserName = config["SeedAdmin:UserName"] ?? "admin";
-        var adminPassword = config["SeedAdmin:Password"] ?? "Admin@1234";
+        var adminUserName = config["SeedAdmin:UserName"];
+        var adminPassword = config["SeedAdmin:Password"];
+
+        if (string.IsNullOrWhiteSpace(adminUserName) || string.IsNullOrWhiteSpace(adminPassword))
+            throw new InvalidOperationException(
+                "SeedAdmin:UserName and SeedAdmin:Password must be configured before starting the app. " +
+                "Use 'dotnet user-secrets set' for local development or environment variables in production.");
 
         if (await userManager.FindByNameAsync(adminUserName) == null)
         {
@@ -27,7 +31,10 @@ public static class SeedData
                 UserName = adminUserName,
                 EmailConfirmed = true
             };
-            await userManager.CreateAsync(adminUser, adminPassword);
+            var result = await userManager.CreateAsync(adminUser, adminPassword);
+            if (!result.Succeeded)
+                throw new InvalidOperationException(
+                    "Failed to create admin user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
         }
 
         // Seed sample data for all parts of the application

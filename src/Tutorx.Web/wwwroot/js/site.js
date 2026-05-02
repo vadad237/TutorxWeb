@@ -1,4 +1,20 @@
-﻿// ── Toast notification utility ────────────────────────────────────────────
+﻿// Auto-inject CSRF token into every fetch POST/PUT/PATCH/DELETE request
+(function () {
+    var _fetch = window.fetch;
+    window.fetch = function (input, init) {
+        init = init || {};
+        var method = (init.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+            var token = document.querySelector('meta[name="csrf-token"]');
+            if (token) {
+                init.headers = Object.assign({ 'RequestVerificationToken': token.content }, init.headers || {});
+            }
+        }
+        return _fetch.call(this, input, init);
+    };
+})();
+
+// Toast notification utility
 function showToast(message, type) {
     type = type || 'danger';
     var container = document.getElementById('toastContainer');
@@ -29,7 +45,7 @@ function showToast(message, type) {
     toastEl.addEventListener('hidden.bs.toast', function () { toastEl.remove(); });
 }
 
-// ── _Layout.cshtml — global confirm modal + tooltips ──────────────────────
+// _Layout.cshtml - global confirm modal + tooltips
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
         new bootstrap.Tooltip(el);
@@ -70,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// ── Groups/Index.cshtml ───────────────────────────────────────────────────
+// Groups/Index.cshtml
 (function () {
     if (!document.querySelector('.btn-delete[data-id]') &&
         !document.querySelector('.btn-archive') &&
@@ -141,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 })();
 
-// ── Activities/Index.cshtml ───────────────────────────────────────────────
+// Activities/Index.cshtml
 (function () {
     var selectAll = document.getElementById('selectAll');
     if (!selectAll || !document.getElementById('bulkAssignBtn')) return;
@@ -166,17 +182,30 @@ document.addEventListener('DOMContentLoaded', function () {
         var total = document.querySelectorAll('.row-check').length;
         selectAll.checked = count === total && total > 0;
         selectAll.indeterminate = count > 0 && count < total;
+        document.querySelectorAll('.row-check').forEach(function (cb) {
+            var row = cb.closest('tr');
+            if (row) row.classList.toggle('table-active', cb.checked);
+        });
+    }
+
+    function setRowHighlight(cb) {
+        var row = cb.closest('tr');
+        if (row) row.classList.toggle('table-active', cb.checked);
     }
 
     selectAll.addEventListener('change', function () {
         document.querySelectorAll('.row-check').forEach(function (cb) {
             cb.checked = selectAll.checked;
+            setRowHighlight(cb);
         });
         updateToolbar();
     });
 
     document.querySelectorAll('.row-check').forEach(function (cb) {
-        cb.addEventListener('change', updateToolbar);
+        cb.addEventListener('change', function () {
+            setRowHighlight(cb);
+            updateToolbar();
+        });
     });
 
     bulkAssignBtn.addEventListener('click', function () {
@@ -308,7 +337,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 })();
 
-// ── Activities/Details.cshtml ─────────────────────────────────────────────
+// Activities/Details.cshtml
 (function () {
     var form = document.getElementById('activityAssignForm');
     if (!form) return;
@@ -1598,17 +1627,30 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
         var total = document.querySelectorAll('.pres-row-check').length;
         presSelectAll.checked = count === total && total > 0;
         presSelectAll.indeterminate = count > 0 && count < total;
+        document.querySelectorAll('.pres-row-check').forEach(function (cb) {
+            var row = cb.closest('tr');
+            if (row) row.classList.toggle('table-active', cb.checked);
+        });
+    }
+
+    function setPresRowHighlight(cb) {
+        var row = cb.closest('tr');
+        if (row) row.classList.toggle('table-active', cb.checked);
     }
 
     presSelectAll.addEventListener('change', function () {
         document.querySelectorAll('.pres-row-check').forEach(function (cb) {
             cb.checked = presSelectAll.checked;
+            setPresRowHighlight(cb);
         });
         updatePresToolbar();
     });
 
     document.querySelectorAll('.pres-row-check').forEach(function (cb) {
-        cb.addEventListener('change', updatePresToolbar);
+        cb.addEventListener('change', function () {
+            setPresRowHighlight(cb);
+            updatePresToolbar();
+        });
     });
 
     presDrawBtn.addEventListener('click', function () {
@@ -1663,81 +1705,7 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
     }
 })();
 
-// ── Activities/DrawResult.cshtml ──────────────────────────────────────────
-(function () {
-    var dataEl = document.getElementById('draw-result-data');
-    if (!dataEl) return;
-    const drawnNames = JSON.parse(dataEl.dataset.drawn);
-    const allNames   = JSON.parse(dataEl.dataset.all);
-
-    const slotDisplay   = document.getElementById('slot-display');
-    const slotName      = document.getElementById('slot-name');
-    const progressLabel = document.getElementById('progress-label');
-    const resultsList   = document.getElementById('results-list');
-    const completeSection = document.getElementById('complete-section');
-
-    function buildPool() {
-        let pool = [...allNames];
-        while (pool.length < 20) pool = [...pool, ...allNames];
-        return pool.sort(() => Math.random() - 0.5);
-    }
-
-    function addResult(name) {
-        const card = document.createElement('div');
-        card.className = 'student-card';
-        card.textContent = name;
-        resultsList.appendChild(card);
-        requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('visible')));
-    }
-
-    function showComplete() {
-        progressLabel.textContent = '';
-        completeSection.classList.add('visible');
-    }
-
-    function revealStudent(index) {
-        if (index >= drawnNames.length) { showComplete(); return; }
-        const target = drawnNames[index];
-        progressLabel.textContent = drawnNames.length === 1
-            ? 'Žrebuje sa študent…'
-            : `Žrebuje sa študent ${index + 1} z ${drawnNames.length}…`;
-        slotDisplay.classList.remove('locked');
-        slotDisplay.classList.add('spinning');
-        slotName.innerHTML = '';
-        const pool = buildPool();
-        let poolIndex = 0;
-        const schedule = [[800, 55], [600, 95], [400, 160], [300, 260], [200, 370]];
-        let scheduleIdx = 0;
-        let phaseEnd = Date.now() + schedule[0][0];
-
-        function tick() {
-            slotName.textContent = pool[poolIndex % pool.length];
-            poolIndex++;
-            const now = Date.now();
-            if (now >= phaseEnd) {
-                scheduleIdx++;
-                if (scheduleIdx >= schedule.length) {
-                    slotDisplay.classList.remove('spinning');
-                    slotDisplay.classList.add('locked');
-                    slotName.textContent = target;
-                    setTimeout(() => {
-                        addResult(target);
-                        setTimeout(() => revealStudent(index + 1), drawnNames.length > 1 ? 900 : 600);
-                    }, 1000);
-                    return;
-                }
-                phaseEnd = now + schedule[scheduleIdx][0];
-            }
-            setTimeout(tick, schedule[scheduleIdx][1]);
-        }
-
-        setTimeout(tick, index === 0 ? 600 : 400);
-    }
-
-    revealStudent(0);
-})();
-
-// ── Attendance/Record.cshtml ──────────────────────────────────────────────
+// Attendance/Record.cshtml
 (function () {
     var dateInput  = document.getElementById('dateInput');
     var timeInput  = document.getElementById('timeInput');
@@ -1825,20 +1793,20 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
         });
     }
 
-    // ── Restore saved state ───────────────────────────────────────────────
+    // Restore saved state
     var savedSearch = sessionStorage.getItem(SEARCH_KEY) || '';
     var savedGroup  = sessionStorage.getItem(GROUP_KEY)  || '';
     if (savedSearch) input.value = savedSearch;
     if (savedGroup && groupNumSelect) groupNumSelect.value = savedGroup;
     if (savedSearch || savedGroup) applyFilters();
 
-    // ── Search ────────────────────────────────────────────────────────────
+    // Search
     input.addEventListener('input', function () {
         sessionStorage.setItem(SEARCH_KEY, this.value.trim());
         applyFilters();
     });
 
-    // ── Group number filter ───────────────────────────────────────────────
+    // Group number filter
     if (groupNumSelect) {
         groupNumSelect.addEventListener('change', function () {
             sessionStorage.setItem(GROUP_KEY, this.value);
@@ -1846,7 +1814,7 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
         });
     }
 
-    // ── Clear saved filters when navigating away ──────────────────────────
+    // Clear saved filters when navigating away
     document.addEventListener('click', function (e) {
         var link = e.target.closest('a[href]');
         if (!link) return;
@@ -1855,7 +1823,7 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
         sessionStorage.removeItem('attFilter_time');
     });
 
-    // ── Sort ──────────────────────────────────────────────────────────────
+    // Sort
     var sortColIdx = -1;
     var sortAsc    = true;
 
@@ -1884,7 +1852,7 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
     });
 })();
 
-// ── Evaluations/Index.cshtml ──────────────────────────────────────────────
+// Evaluations/Index.cshtml
 (function () {
     var SEARCH_KEY   = 'evalFilter_search';
     var ACTIVITY_KEY = 'evalFilter_activity';
@@ -1960,7 +1928,7 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
         sessionStorage.removeItem(ACTIVITY_KEY);
     });
 
-    // ── Sort by student name ──────────────────────────────────────────────
+    // Sort by student name
     var evalTable     = document.getElementById('evalTable');
     var evalTbody     = evalTable.querySelector('tbody');
     var evalSortCol   = -1;
@@ -1991,7 +1959,7 @@ document.querySelectorAll('.btn-draw-pres').forEach(function (btn) {
     });
 })();
 
-// ── Students/Index.cshtml ─────────────────────────────────────────────────
+// Students/Index.cshtml
 var updateToolbar;
 
 (function () {
@@ -2031,7 +1999,7 @@ var updateToolbar;
         clearBtn.classList.toggle('d-none', !hasFilter);
         noResults.classList.toggle('d-none', visible > 0 || allRows.length === 0);
         filterCount.textContent = hasFilter ? visible + ' z ' + allRows.length + ' študentov' : '';
-        if (typeof updateToolbar === 'function') updateToolbar();
+        if (typeof window._studentsUpdateToolbar === 'function') window._studentsUpdateToolbar();
     }
 
     function clearAll() {
@@ -2061,7 +2029,7 @@ var updateToolbar;
         return Array.from(document.querySelectorAll('.row-check:checked'));
     }
 
-    updateToolbar = function () {
+    window._studentsUpdateToolbar = function () {
         var checked = getChecked();
         var count = checked.length;
         var hasSelection = count > 0;
@@ -2075,17 +2043,34 @@ var updateToolbar;
         var visibleChecked = visibleBoxes.filter(function (cb) { return cb.checked; });
         selectAll.checked = visibleBoxes.length > 0 && visibleChecked.length === visibleBoxes.length;
         selectAll.indeterminate = visibleChecked.length > 0 && visibleChecked.length < visibleBoxes.length;
+        document.querySelectorAll('.row-check').forEach(function (cb) {
+            var row = cb.closest('tr');
+            if (row) row.classList.toggle('table-active', cb.checked);
+        });
     };
+    var updateToolbar = window._studentsUpdateToolbar;
+
+    function setRowHighlight(cb) {
+        var row = cb.closest('tr');
+        if (row) row.classList.toggle('table-active', cb.checked);
+    }
 
     selectAll.addEventListener('change', function () {
-        var visibleBoxes = Array.from(document.querySelectorAll('.row-check'))
-            .filter(function (cb) { return cb.closest('tr').style.display !== 'none'; });
-        visibleBoxes.forEach(function (cb) { cb.checked = selectAll.checked; });
+        var allBoxes     = Array.from(document.querySelectorAll('.row-check'));
+        var visibleBoxes = allBoxes.filter(function (cb) { return cb.closest('tr').style.display !== 'none'; });
+        if (selectAll.checked) {
+            visibleBoxes.forEach(function (cb) { cb.checked = true; setRowHighlight(cb); });
+        } else {
+            allBoxes.forEach(function (cb) { cb.checked = false; setRowHighlight(cb); });
+        }
         updateToolbar();
     });
 
     document.querySelectorAll('.row-check').forEach(function (cb) {
-        cb.addEventListener('change', updateToolbar);
+        cb.addEventListener('change', function () {
+            setRowHighlight(cb);
+            updateToolbar();
+        });
     });
 
     function bulkSetActive(active) {
@@ -2225,9 +2210,9 @@ var updateToolbar;
     }
 })();
 
-// ── Activities/Index.cshtml ───────────────────────────────────────────────
+// Activities/Index.cshtml
 (function () {
-    var activitiesTable = document.getElementById('activitiesTable');
+    var activitiesTable
     if (activitiesTable) {
         var activitiesTbody = activitiesTable.querySelector('tbody');
         var sortColIdx = -1;
@@ -2269,7 +2254,7 @@ var updateToolbar;
     }
 })();
 
-// ── Students/ImportPreview.cshtml ─────────────────────────────────────────
+// Students/ImportPreview.cshtml
 (function () {
     // Column visibility toggles
     function applyCardErrVisibility(cardColVisible) {
@@ -2381,7 +2366,7 @@ var updateToolbar;
     });
 })();
 
-// ── CustomExport/Index.cshtml ─────────────────────────────────────────────
+// CustomExport/Index.cshtml
 (function () {
     document.querySelectorAll('.section-cb').forEach(function (cb) {
         var cardId = cb.dataset.card;

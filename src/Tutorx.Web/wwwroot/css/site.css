@@ -9,12 +9,12 @@
     z-index: 1000;
 }
 
-/* ── Students/Index.cshtml ──────────────────────────────────────────────── */
+/* Students/Index.cshtml */
 tr[data-detail-url] {
     cursor: pointer;
 }
 
-/* ── Students/ImportPreview.cshtml ──────────────────────────────────────── */
+/* Students/ImportPreview.cshtml */
 th[data-sort] {
     cursor: pointer;
     user-select: none;
@@ -63,7 +63,7 @@ th[data-sort].sort-desc .sort-icon::after {
 .badge-excused { background-color: #ffc107; color: #000; }
 .badge-none { background-color: #6c757d; }
 
-/* Table action buttons — rounded corners and spacing */
+/* Table action buttons */
 td .btn-group,
 td .btn-group-sm {
     display: flex;
@@ -88,7 +88,7 @@ td .btn-group-sm > form > .btn {
     animation: drawPulse 0.5s ease-in-out;
 }
 
-/* ── _Layout.cshtml ─────────────────────────────────────────────────────── */
+/* _Layout.cshtml */
 .active-nav {
     background-color: rgba(255, 255, 255, 0.15);
     border-radius: 6px;
@@ -108,7 +108,7 @@ td .btn-group-sm > form > .btn {
     justify-content: center;
 }
 
-/* ── Account/Login.cshtml ───────────────────────────────────────────────── */
+/* Account/Login.cshtml */
 .login-page {
     background-color: #f5f5f5;
     display: flex;
@@ -116,7 +116,7 @@ td .btn-group-sm > form > .btn {
     min-height: 100vh;
 }
 
-/* ── Shared/_DrawLayout.cshtml ──────────────────────────────────────────── */
+/* Shared/_DrawLayout.cshtml */
 .draw-layout-body {
     background: #0D1117;
     color: #FFFFFF;
@@ -134,7 +134,7 @@ td .btn-group-sm > form > .btn {
     min-width: 220px;
 }
 
-/* ── Attendance/History.cshtml ── sticky first column ───────────────────── */
+/* Attendance/History.cshtml - sticky first column */
 .att-wrap thead tr th:first-child,
 .att-wrap tbody tr td:first-child {
     position: sticky;
@@ -150,7 +150,7 @@ td .btn-group-sm > form > .btn {
     border-right: 1px solid #dee2e6;
 }
 
-/* ── Evaluations/Index.cshtml ── sticky first column ────────────────────── */
+/* Evaluations/Index.cshtml - sticky first column */
 .eval-wrap thead tr th:first-child,
 .eval-wrap tbody tr td:first-child {
     position: sticky;
@@ -166,7 +166,7 @@ td .btn-group-sm > form > .btn {
     border-right: 1px solid #dee2e6;
 }
 
-/* ── Activities/DrawResult.cshtml ───────────────────────────────────────── */
+/* Activities/DrawResult.cshtml */
 .draw-hero {
     min-height: 60vh;
     display: flex;
@@ -184,7 +184,7 @@ td .btn-group-sm > form > .btn {
 #complete-section { opacity: 0; transition: opacity .6s ease; }
 #complete-section.visible { opacity: 1; }
 
-/* ── Draw/Index.cshtml ──────────────────────────────────────────────────── */
+/* Draw/Index.cshtml */
 .slot-outer-compact {
     width: 100% !important;
     max-width: 100% !important;
@@ -217,7 +217,7 @@ td .btn-group-sm > form > .btn {
     background: rgba(13,110,253,.04);
 }
 
-/* ── Shared scrollable table with sticky header ─────────────────────────── */
+/* Shared scrollable table with sticky header */
 .table-scroll-wrap {
     max-height: 75vh;
     overflow: auto;
@@ -232,7 +232,7 @@ td .btn-group-sm > form > .btn {
     z-index: 3;
 }
 
-/* ── Draw/History.cshtml ───────────────────────────────────────────────── */
+/* Draw/History.cshtml */
 .history-table th:nth-child(2),
 .history-table td:nth-child(2),
 .history-table th:nth-child(3),
@@ -240,11 +240,11 @@ td .btn-group-sm > form > .btn {
     width: 20%;
 }
 
-/* ── Attendance/Record.cshtml ── shorter scroll region ─────────────────── */
+/* Attendance/Record.cshtml - shorter scroll region */
 .attendance-record-wrap {
     max-height: 65vh;
 }
-/* ── CustomExport/Index.cshtml ──────────────────────────────────────────── */
+/* CustomExport/Index.cshtml */
 .export-card { cursor: pointer; display: block; }
 .section-card,
 .att-section-card,

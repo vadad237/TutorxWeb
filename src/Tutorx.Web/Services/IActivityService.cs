@@ -17,8 +17,6 @@ public interface IActivityService
     Task<(bool Exists, bool Deleted)> DeleteActivityAsync(int id);
     Task BulkDeleteActivitiesAsync(List<int> ids);
     Task<List<EligibleStudentDto>?> GetEligibleStudentsAsync(int activityId, bool includeAlreadyAssigned);
-    Task<(string ActivityName, List<string> AllStudentNames)?> GetDrawResultDataAsync(int activityId);
-    Task<(int ActivityId, string ActivityName, string TaskTitle, List<string> AllStudentNames)?> GetPresentationDrawResultDataAsync(int taskId);
     Task<(bool Success, int? NewId, string? Message)> DuplicateActivityAsync(int id);
     Task<bool> SetActivityAssignmentsAsync(int activityId, int[]? studentIds);
     Task<List<DrawActivityVm>> GetActivitiesForGroupAsync(int groupId);

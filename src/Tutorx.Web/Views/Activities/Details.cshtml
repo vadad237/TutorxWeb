@@ -30,7 +30,6 @@
     </div>
 </div>
 
-<!-- Assigned Students Section -->
 <div class="card mb-3">
     <div class="card-body">
         <h5>Priradení študenti (@Model.AssignedStudents.Count)</h5>
@@ -105,7 +104,6 @@
     </div>
 </div>
 
-<!-- Zadania Section -->
 <div class="card mb-3">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -255,9 +253,6 @@ else
     </table>
 }
 
-<!-- ══════════════════════════════════════════════════════
-     PRESENTATIONS SECTION
-     ══════════════════════════════════════════════════════ -->
 <div class="card mb-3">
     <div class="card-body">
         <h5>Pridať prezentáciu</h5>
@@ -425,9 +420,6 @@ else
     </table>
 }
 
-<!-- ══════════════════════════════════════════════════════
-     OTHER ATTRIBUTES SECTION
-     ══════════════════════════════════════════════════════ -->
 <div class="d-flex align-items-center gap-2 mb-2 mt-4">
     <h4 class="mb-0">Ostatné</h4>
     <div class="input-group input-group-sm" style="max-width:260px">
@@ -518,7 +510,6 @@ else
     <div class="alert alert-info">Žiadne atribúty. Pridajte nový atribút pomocou poľa vyššie.</div>
 }
 
-<!-- Manage States Modal -->
 <div class="modal fade" id="manageStatesModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -527,7 +518,6 @@ else
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <!-- Attribute name -->
                 <div class="mb-3 d-flex gap-2 align-items-center">
                     <input type="text" id="modalAttrName" class="form-control form-control-sm" placeholder="Názov atribútu" maxlength="200" />
                     <button type="button" id="modalDeleteAttrBtn" class="btn btn-sm btn-outline-danger flex-shrink-0" title="Vymazať atribút">
@@ -535,9 +525,7 @@ else
                     </button>
                 </div>
                 <hr class="my-2" />
-                <!-- States list -->
                 <div id="statesList" class="mb-3"></div>
-                <!-- Add state form -->
                 <div class="d-flex gap-2 align-items-center flex-wrap">
                     <input type="text" id="newStateName" class="form-control form-control-sm" style="max-width:150px" placeholder="Názov stavu…" maxlength="200" />
                     <select id="newStateColor" class="form-select form-select-sm" style="max-width:130px">
@@ -559,7 +547,6 @@ else
         </div>
     </div>
 </div>
-@* Scripts loaded from site.js *@
 
 <div class="modal fade" id="addNumberedTasksModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">

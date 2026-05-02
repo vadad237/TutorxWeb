@@ -2,7 +2,7 @@ namespace Tutorx.Web.Models.Entities;
 
 public enum PresentationRole : byte
 {
-    Presentee    = 0,
+    Presentee = 0,
     Substitution = 1
 }
 

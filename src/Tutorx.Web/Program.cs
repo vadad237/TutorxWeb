@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Tutorx.Web.Data;
@@ -19,6 +20,9 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = true;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
 })
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
@@ -32,12 +36,13 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
-// MVC with global [Authorize] filter
+// MVC with global [Authorize] + global anti-forgery filters
 builder.Services.AddControllersWithViews(options =>
 {
     var policy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser().Build();
     options.Filters.Add(new AuthorizeFilter(policy));
+    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
 });
 
 // Session
@@ -60,7 +65,6 @@ builder.Services.AddScoped<IEvaluationService, EvaluationService>();
 builder.Services.AddScoped<IActivityAttributeService, ActivityAttributeService>();
 builder.Services.AddScoped<IDrawService, DrawService>();
 builder.Services.AddScoped<IImportService, ImportService>();
-builder.Services.AddScoped<IExportService, ExportService>();
 builder.Services.AddScoped<ICustomExportService, CustomExportService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IAssignmentService, AssignmentService>();
@@ -80,16 +84,16 @@ await SeedData.InitializeAsync(app);
 // Configure the HTTP request pipeline
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler("/Groups/Index");
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseSession();
 
 app.UseStatusCodePages(async ctx =>
 {

@@ -28,7 +28,6 @@ else
     @Html.AntiForgeryToken()
     <input type="hidden" name="GroupId" value="@Model.GroupId" />
 
-    <!-- Section selection cards -->
     <p class="text-muted mb-3">
         Vyberte sekcie, ktoré chcete zahrnúť. Každý riadok v exporte predstavuje jedného študenta.
         Stĺpce sa pridajú pre každú vybranú sekciu.
@@ -36,7 +35,6 @@ else
 
     <div class="row g-3 mb-4">
 
-        <!-- Students -->
         <div class="col-md-6 col-xl-4">
             <label class="export-card h-100" id="card-students">
                 <input type="checkbox" name="IncludeStudents" value="true"
@@ -76,7 +74,6 @@ else
             </label>
         </div>
 
-        <!-- Attendance -->
         <div class="col-md-6 col-xl-4">
             <label class="export-card h-100" id="card-attendance">
                 <input type="checkbox" name="IncludeAttendance" value="true"
@@ -112,7 +109,6 @@ else
             </label>
         </div>
 
-        <!-- Activities -->
         <div class="col-md-6 col-xl-4">
             <label class="export-card h-100" id="card-activities">
                 <input type="checkbox" name="IncludeActivities" value="true"
@@ -138,7 +134,6 @@ else
             </label>
         </div>
 
-        <!-- Tasks & Evaluations -->
         <div class="col-md-6 col-xl-4">
             <label class="export-card h-100" id="card-tasks">
                 <input type="checkbox" name="IncludeTasks" value="true"
@@ -174,7 +169,6 @@ else
             </label>
         </div>
 
-        <!-- Presentations -->
         <div class="col-md-6 col-xl-4">
             <label class="export-card h-100" id="card-presentations">
                 <input type="checkbox" name="IncludePresentations" value="true"
@@ -201,7 +195,6 @@ else
             </label>
         </div>
 
-        <!-- Other Attributes -->
         <div class="col-md-6 col-xl-4">
             <label class="export-card h-100" id="card-other">
                 <input type="checkbox" name="IncludeOtherAttributes" value="true"
@@ -229,7 +222,6 @@ else
 
     </div>
 
-    <!-- Format + Export button -->
     <div class="card border-0 shadow-sm">
         <div class="card-body d-flex flex-wrap align-items-center gap-4">
 

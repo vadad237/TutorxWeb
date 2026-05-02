@@ -9,7 +9,6 @@ public class ActivityAttributeOption
     [Required, MaxLength(200)]
     public string Name { get; set; } = null!;
 
-    /// <summary>Bootstrap colour keyword: primary, success, danger, warning, info, secondary</summary>
     [MaxLength(50)]
     public string Color { get; set; } = "secondary";
 

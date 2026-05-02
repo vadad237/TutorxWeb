@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function () {
         [200, 370]
     ];
 
-    // ── Pool builder ──────────────────────────────────────────────────────────
+    // Pool builder
     function buildPool(names) {
         var src = (names && names.length > 0) ? names : allNames;
         var pool = src.slice();
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return pool.sort(function () { return Math.random() - 0.5; });
     }
 
-    // ── Global toolbar state ──────────────────────────────────────────────────
+    // Global toolbar state
     function updateAllButtons() {
         var hasValid = Array.from(cardsGrid.children).some(function (col) {
             var sel = col.querySelector('.card-item-select');
@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ── Card creation ─────────────────────────────────────────────────────────
+    // Card creation
     // type: 'activity' | 'presentation'
     function createCard(type, preselectedId, preselectedRole) {
         var id = ++cardCounter;
@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function () {
           +   '</div>'
           + '</div>';
 
-        // ── Element refs ──────────────────────────────────────────────────────
+        // Element refs
         var actSel           = wrapper.querySelector('.card-item-select');
         var slotName         = wrapper.querySelector('.card-slot-name');
         var removeBtn        = wrapper.querySelector('.remove-card-btn');
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var suppressBothWarning = false; // true only during post-draw eligible reload
         var manuallyRemovedIds  = new Set(); // student IDs removed by user; cleared on selection change
 
-        // ── Detail link updater ───────────────────────────────────────────────
+        // Detail link updater
         function updateDetailLink(selectedValue) {
             if (!selectedValue) {
                 detailLink.style.display = 'none';
@@ -244,13 +244,13 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!isNaN(max) && max > 0 && val > max) this.value = max;
         });
 
-        // ── Per-card button updater ───────────────────────────────────────────
+        // Per-card button updater
         wrapper._updateCardBtn = function () {
             cardDrawBtn.disabled = !actSel.value || isCardDrawing || isDrawingAll
                 || parseInt(countInput.max || '0', 10) === 0;
         };
 
-        // ── Lock / unlock all interactive controls during drawing ─────────────
+        // Lock / unlock all interactive controls during drawing
         wrapper._lockControls = function () {
             actSel.disabled = true;
             if (roleSelect) roleSelect.disabled = true;
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // countInput enabled state is restored by loadEligible / syncEligibleCount
         };
 
-        // ── Eligible list renderer ────────────────────────────────────────────
+        // Eligible list renderer
         function syncEligibleCount() {
             var remaining = eligibleList.querySelectorAll('.eligible-tag').length;
             var isBothNow = cardType === 'presentation' && roleSelect && roleSelect.value === 'both';
@@ -348,7 +348,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // ── Eligible students loader ──────────────────────────────────────────
+        // Eligible students loader
         function loadEligible(itemId) {
             eligibleList.innerHTML = '<span class="text-muted small">'
                 + '<span class="spinner-border spinner-border-sm me-1" role="status"></span>'
@@ -483,7 +483,7 @@ document.addEventListener('DOMContentLoaded', function () {
             syncEligibleCount();
         };
 
-        // ── Clear previous draw result ────────────────────────────────────────
+        // Clear previous draw result
         function clearDrawResult() {
             var resultsList  = wrapper.querySelector('.card-results-list');
             var completeMsg  = wrapper.querySelector('.card-complete-msg');
@@ -496,14 +496,14 @@ document.addEventListener('DOMContentLoaded', function () {
             slotName.textContent    = '';
         }
 
-        // ── Include-assigned checkbox ─────────────────────────────────────────
+        // Include-assigned checkbox
         includeAssignedCb.addEventListener('change', function () {
             manuallyRemovedIds.clear();
             clearDrawResult();
             if (actSel.value) loadEligible(parseInt(actSel.value, 10));
         });
 
-        // ── Role select change (presentations only) ───────────────────────────
+        // Role select change (presentations only)
         if (roleSelect) {
             roleSelect.addEventListener('change', function () {
                 manuallyRemovedIds.clear();
@@ -512,7 +512,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // ── Item select change ─────────────────────────────────────────────────
+        // Item select change
         actSel.addEventListener('change', function () {
             manuallyRemovedIds.clear();
             clearDrawResult();
@@ -535,13 +535,13 @@ document.addEventListener('DOMContentLoaded', function () {
             updateAllButtons();
         });
 
-        // ── Remove card ───────────────────────────────────────────────────────
+        // Remove card
         removeBtn.addEventListener('click', function () {
             wrapper.remove();
             updateAllButtons();
         });
 
-        // ── Individual Draw button ────────────────────────────────────────────
+        // Individual Draw button
         cardDrawBtn.addEventListener('click', async function () {
             if (isCardDrawing || isDrawingAll) return;
             isCardDrawing = true;
@@ -571,7 +571,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return wrapper;
     }
 
-    // ── Animation: reveal one name on a specific card ─────────────────────────
+    // Animation: reveal one name on a specific card
     function revealOneOnCard(cardEl, name, index, total, eligibleNames) {
         return new Promise(function (resolve) {
             var slotDisplay = cardEl.querySelector('.card-slot-display');
@@ -628,7 +628,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ── Full draw sequence for one card ───────────────────────────────────────
+    // Full draw sequence for one card
     async function runCardDraw(cardEl) {
         var actSel            = cardEl.querySelector('.card-item-select');
         var countInput        = cardEl.querySelector('.card-count-input');
@@ -682,7 +682,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             if (cType === 'presentation' && roleValue === 'both') {
-                // ── Draw Prezentujúci (role 0) then Náhradník (role 1) ────────
+                // Draw Prezentujúci (role 0) then Náhradník (role 1)
                 var dataP = await drawForRole(0);
                 if (!dataP.success || !dataP.drawnNames || dataP.drawnNames.length === 0) {
                     slotName.style.fontSize = '0.9rem';
@@ -774,7 +774,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
             } else {
-                // ── Single-role draw ──────────────────────────────────────────
+                // Single-role draw
                 var role = (cType === 'presentation' && roleValue !== null) ? parseInt(roleValue, 10) : 0;
                 var data = await drawForRole(role);
 
@@ -799,7 +799,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // ── Draw All ──────────────────────────────────────────────────────────────
+    // Draw All
     if (drawAllBtn) {
         drawAllBtn.addEventListener('click', async function () {
             if (isDrawingAll) return;
@@ -836,17 +836,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ── Add card button ───────────────────────────────────────────────────────
+    // Add card button
     if (addCardBtn) {
         addCardBtn.addEventListener('click', function () { createCard('activity', null); });
     }
 
-    // ── Add presentation card button ──────────────────────────────────────────
+    // Add presentation card button
     if (addPresCardBtn) {
         addPresCardBtn.addEventListener('click', function () { createCard('presentation', null); });
     }
 
-    // ── Seed initial cards ────────────────────────────────────────────────────
+    // Seed initial cards
     var hasInitial = false;
     if (initialIds && initialIds.length > 0) {
         initialIds.forEach(function (actId) { createCard('activity', actId); });
@@ -860,7 +860,7 @@ document.addEventListener('DOMContentLoaded', function () {
         createCard('activity', null);
     }
 
-    // ── Utilities ─────────────────────────────────────────────────────────────
+    // Utilities
     function escapeHtml(str) {
         return String(str)
             .replace(/&/g, '&amp;')

@@ -145,7 +145,7 @@ public class ActivityService : IActivityService
                     int.TryParse(t.Title, out var n) ? n : i + 1,
                     t.PresentationStudents
                         .Where(ps => ps.Role == PresentationRole.Presentee)
-                        .Select(ps => new PresentationStudentVm(ps.StudentId, ps.Student.FirstName + " " + ps.Student.LastName))
+                        .Select(ps => new PresentationStudentVm(ps.StudentId, ps.Student.FullName))
                         .OrderBy(ps => ps.FullName)
                         .ToList()
                 ))
@@ -157,14 +157,14 @@ public class ActivityService : IActivityService
                     t.Id,
                     t.Title,
                     t.PresentationDate,
-                    t.PresentationStudents
+                        t.PresentationStudents
                         .Where(ps => ps.Role == PresentationRole.Presentee)
-                        .Select(ps => new PresentationStudentVm(ps.StudentId, ps.Student.FirstName + " " + ps.Student.LastName))
+                        .Select(ps => new PresentationStudentVm(ps.StudentId, ps.Student.FullName))
                         .OrderBy(ps => ps.FullName)
                         .ToList(),
                     t.PresentationStudents
                         .Where(ps => ps.Role == PresentationRole.Substitution)
-                        .Select(ps => new PresentationStudentVm(ps.StudentId, ps.Student.FirstName + " " + ps.Student.LastName))
+                        .Select(ps => new PresentationStudentVm(ps.StudentId, ps.Student.FullName))
                         .OrderBy(ps => ps.FullName)
                         .ToList(),
                     t.MaxScore
@@ -172,7 +172,7 @@ public class ActivityService : IActivityService
             AssignedStudents = activity.Assignments.Select(a => new AssignedStudentVm(
                 a.Id,
                 a.StudentId,
-                a.Student.FirstName + " " + a.Student.LastName
+                a.Student.FullName
             )).OrderBy(s => s.FullName).ToList(),
             UnassignedStudentCount = activeStudentCount - assignedStudentCount,
             UnassignedTaskCount = 0,
@@ -204,7 +204,7 @@ public class ActivityService : IActivityService
         var allStudents = activity.Group.Students
             .Where(s => s.IsActive)
             .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
-            .Select(s => new StudentSummaryVm { Id = s.Id, FullName = s.FirstName + " " + s.LastName })
+            .Select(s => new StudentSummaryVm { Id = s.Id, FullName = s.FullName })
             .ToList();
 
         return (details, allStudents);
@@ -290,44 +290,6 @@ public class ActivityService : IActivityService
             .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
             .Select(s => new EligibleStudentDto(s.Id, s.FirstName + " " + s.LastName))
             .ToList();
-    }
-
-    public async Task<(string ActivityName, List<string> AllStudentNames)?> GetDrawResultDataAsync(int activityId)
-    {
-        var activity = await _db.Activities
-            .Include(a => a.Group).ThenInclude(g => g.Students)
-            .FirstOrDefaultAsync(a => a.Id == activityId);
-
-        if (activity == null)
-            return null;
-
-        var allStudentNames = activity.Group.Students
-            .Where(s => s.IsActive)
-            .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
-            .Select(s => $"{s.FirstName} {s.LastName}")
-            .ToList();
-
-        return (activity.Name, allStudentNames);
-    }
-
-    public async Task<(int ActivityId, string ActivityName, string TaskTitle, List<string> AllStudentNames)?> GetPresentationDrawResultDataAsync(int taskId)
-    {
-        var task = await _db.TaskItems
-            .Include(t => t.Activity)
-                .ThenInclude(a => a.Group)
-                    .ThenInclude(g => g.Students)
-            .FirstOrDefaultAsync(t => t.Id == taskId);
-
-        if (task == null)
-            return null;
-
-        var allStudentNames = task.Activity.Group.Students
-            .Where(s => s.IsActive)
-            .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
-            .Select(s => $"{s.FirstName} {s.LastName}")
-            .ToList();
-
-        return (task.ActivityId, task.Activity.Name, task.Title, allStudentNames);
     }
 
     public async Task<(bool Success, int? NewId, string? Message)> DuplicateActivityAsync(int id)

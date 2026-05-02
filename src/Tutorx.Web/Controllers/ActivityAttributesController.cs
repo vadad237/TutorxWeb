@@ -9,8 +9,6 @@ public class ActivityAttributesController : Controller
 
     public ActivityAttributesController(IActivityAttributeService attributeService) => _attributeService = attributeService;
 
-    // ── Attribute CRUD ────────────────────────────────────────────────────────
-
     [HttpPost]
     public async Task<IActionResult> Create(int activityId, string name)
     {
@@ -42,8 +40,6 @@ public class ActivityAttributesController : Controller
         return Json(new { success = true });
     }
 
-    // ── Option CRUD ───────────────────────────────────────────────────────────
-
     [HttpPost]
     public async Task<IActionResult> AddOption(int attributeId, string name, string color = "secondary")
     {
@@ -74,8 +70,6 @@ public class ActivityAttributesController : Controller
 
         return Json(new { success = true });
     }
-
-    // ── Student value ─────────────────────────────────────────────────────────
 
     [HttpPost]
     public async Task<IActionResult> SetValue(int studentId, int attributeId, int? optionId)

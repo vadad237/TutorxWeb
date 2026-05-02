@@ -44,7 +44,6 @@ public class DrawController : Controller
         if (group == null) return NotFound();
 
         var allNames = await _activityService.GetActiveStudentNamesForGroupAsync(gid.Value);
-        var bagStatus = await _drawService.GetBagStatusAsync(gid.Value);
         var history = await _drawService.GetHistoryAsync(gid.Value, 1);
 
         var allGroups = (await _groupService.GetNonArchivedGroupsAsync())
@@ -59,14 +58,12 @@ public class DrawController : Controller
             GroupId = gid.Value,
             GroupName = group.Name,
             AllActiveStudentNames = allNames,
-            BagStatus = bagStatus,
             LastDraw = history.FirstOrDefault(),
             AllGroups = allGroups,
             Activities = activities,
             Presentations = presentations
         };
 
-        // Parse and validate initial activity IDs from query string
         var initialIds = string.IsNullOrEmpty(activityIds)
             ? new List<int>()
             : activityIds.Split(',')
@@ -75,7 +72,6 @@ public class DrawController : Controller
                 .ToList();
         ViewBag.InitialActivityIds = initialIds;
 
-        // Parse and validate initial presentation IDs from query string
         var initialPresIds = string.IsNullOrEmpty(presentationIds)
             ? new List<int>()
             : presentationIds.Split(',')
@@ -119,20 +115,6 @@ public class DrawController : Controller
         }
     }
 
-    [HttpPost]
-    public async Task<IActionResult> Next(int groupId)
-    {
-        try
-        {
-            var result = await _drawService.DrawNextAsync(groupId);
-            return Json(new { success = true, studentId = result.StudentId, fullName = result.FullName, cycleNumber = result.CycleNumber, remainingInBag = result.RemainingInBag });
-        }
-        catch (Exception ex)
-        {
-            return Json(new { success = false, message = ex.Message });
-        }
-    }
-
     [HttpGet]
     public async Task<IActionResult> History(int? groupId, int page = 1)
     {
@@ -163,26 +145,5 @@ public class DrawController : Controller
         };
 
         return View(vm);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> Reset(int groupId)
-    {
-        try
-        {
-            await _drawService.ResetBagAsync(groupId);
-            return Json(new { success = true, message = "Bag reset successfully." });
-        }
-        catch (Exception ex)
-        {
-            return Json(new { success = false, message = ex.Message });
-        }
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> BagStatus(int groupId)
-    {
-        var status = await _drawService.GetBagStatusAsync(groupId);
-        return Json(new { remaining = status.Remaining, total = status.Total, currentCycle = status.CurrentCycle });
     }
 }

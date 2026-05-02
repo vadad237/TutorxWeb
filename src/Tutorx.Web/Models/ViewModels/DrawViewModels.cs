@@ -7,7 +7,6 @@ public class DrawIndexVm
     public int GroupId { get; set; }
     public string GroupName { get; set; } = null!;
     public List<string> AllActiveStudentNames { get; set; } = [];
-    public BagStatusDto BagStatus { get; set; } = null!;
     public DrawHistoryDto? LastDraw { get; set; }
     public List<GroupSummaryVm> AllGroups { get; set; } = [];
     public List<DrawActivityVm> Activities { get; set; } = [];

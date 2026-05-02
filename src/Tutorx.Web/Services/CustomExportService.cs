@@ -18,16 +18,13 @@ public class CustomExportService : ICustomExportService
 
     public async Task<byte[]> GenerateAsync(CustomExportRequestVm request)
     {
-        // ── 1. Load students ────────────────────────────────────────────────
         var students = await _db.Students
             .Where(s => s.GroupId == request.GroupId && s.IsActive)
             .OrderBy(s => s.LastName).ThenBy(s => s.FirstName)
             .ToListAsync();
 
-        // ── 2. Build headers and load data per section ─────────────────────
         var headers = new List<(string Text, string Section)>();
 
-        // --- Students ---
         if (request.IncludeStudents)
         {
             if (request.IncludeStudentFirstName)  headers.Add(("Meno",        "students"));
@@ -38,9 +35,6 @@ public class CustomExportService : ICustomExportService
             if (request.IncludeStudentGroupNumber) headers.Add(("Krúžok",     "students"));
         }
 
-        // --- Attendance ---
-        // attendanceSlots = distinct (Date, Time?) slots in chronological order
-        // attendanceSlotMap[studentId][(date, time)] = status label
         List<(DateOnly Date, TimeOnly? Time)> attendanceSlots = [];
         Dictionary<int, Dictionary<(DateOnly, TimeOnly?), string>> attendanceSlotMap = new();
         if (request.IncludeAttendance)
@@ -88,8 +82,6 @@ public class CustomExportService : ICustomExportService
             }
         }
 
-        // --- Activities ---
-        // activityList holds each activity in sorted order; assignedSet[studentId, activityId] = assigned
         List<Activity> activityList = [];
         HashSet<(int studentId, int activityId)> activityAssignedSet = new();
         if (request.IncludeActivities)
@@ -111,11 +103,9 @@ public class CustomExportService : ICustomExportService
                 headers.Add((activity.Name, "activities"));
         }
 
-        // --- Tasks & Evaluations ---
         List<TaskItem> tasks = new();
         List<TaskItem> taskPresentations = new();
         Dictionary<(int studentId, int taskId), Evaluation> evalMap = new();
-        // numberedTaskMap[(studentId, activityId)] = sorted list of numeric-task titles
         Dictionary<(int studentId, int activityId), List<string>> numberedTaskMap = new();
         if (request.IncludeTasks)
         {
@@ -142,8 +132,6 @@ public class CustomExportService : ICustomExportService
 
             evalMap = evals.ToDictionary(e => (e.StudentId, e.TaskItemId));
 
-            // Load numbered-task assignments for "Zadania" column
-            // Numeric task assignments are stored in PresentationStudents (Role=Presentee, IsNumberedTask=true)
             var numberedTaskAssignments = await _db.PresentationStudents
                 .Include(ps => ps.TaskItem)
                 .Where(ps => ps.TaskItem.IsNumberedTask
@@ -161,7 +149,6 @@ public class CustomExportService : ICustomExportService
                 list.Add(asgn.Title);
             }
 
-            // Collect all activity IDs present in either list
             var allActivityIds = tasks.Select(t => t.ActivityId)
                 .Union(taskPresentations.Select(t => t.ActivityId))
                 .Distinct()
@@ -202,8 +189,6 @@ public class CustomExportService : ICustomExportService
             }
         }
 
-        // --- Other Attributes ---
-        // attrList[i] = (attributeId, "ActivityName › AttrName")
         List<(int AttributeId, string Header)> attrList = [];
         Dictionary<(int studentId, int attributeId), string> attrValueMap = new();
         if (request.IncludeOtherAttributes)
@@ -230,8 +215,6 @@ public class CustomExportService : ICustomExportService
                     attrValueMap[(v.StudentId, v.ActivityAttributeId)] = v.Option.Name;
         }
 
-        // --- Presentations ---
-        // presRoleMap[(studentId, taskId)] = "P" (Prezentujúci) or "N" (Náhradník)
         List<TaskItem> presentations = new();
         Dictionary<(int studentId, int taskId), string> presRoleMap = new();
         if (request.IncludePresentations)
@@ -260,7 +243,6 @@ public class CustomExportService : ICustomExportService
             }
         }
 
-        // ── 3. Build data rows ─────────────────────────────────────────────
         var rows = new List<List<string>>();
         foreach (var student in students)
         {
@@ -358,7 +340,6 @@ public class CustomExportService : ICustomExportService
                     }
                     else
                     {
-                        // Summary only — still need to sum all scores
                         foreach (var task in tasks.Where(t => t.ActivityId == actId))
                             if (evalMap.TryGetValue((student.Id, task.Id), out var eval))
                             { actSum += eval.Score; hasAny = true; }
@@ -393,13 +374,11 @@ public class CustomExportService : ICustomExportService
             rows.Add(row);
         }
 
-        // ── 4. Generate file ───────────────────────────────────────────────
         return request.Format == "csv"
             ? BuildCsv(headers.Select(h => h.Text).ToList(), rows)
             : BuildXlsx(headers, rows);
     }
 
-    // ── CSV builder ────────────────────────────────────────────────────────
     private static byte[] BuildCsv(List<string> headers, List<List<string>> rows)
     {
         var sb = new StringBuilder();
@@ -414,8 +393,6 @@ public class CustomExportService : ICustomExportService
             ? $"\"{v.Replace("\"", "\"\"")}\""
             : v;
 
-    // ── XLSX builder ───────────────────────────────────────────────────────
-    // Section colour bands
     private static readonly Dictionary<string, string> SectionColours = new()
     {
         { "students",      "#1e3a5f" },  // dark navy
@@ -439,7 +416,6 @@ public class CustomExportService : ICustomExportService
         int totalRows = rows.Count;
         int totalCols = headers.Count;
 
-        // ── Header row ────────────────────────────────────────────────────
         for (int c = 0; c < totalCols; c++)
         {
             var cell   = ws.Cell(1, c + 1);
@@ -468,7 +444,6 @@ public class CustomExportService : ICustomExportService
         ws.Row(1).Height = 42;
         ws.SheetView.FreezeRows(1);
 
-        // ── Data rows ─────────────────────────────────────────────────────
         var rowBgEven = XLColor.White;
         var rowBgOdd  = XLColor.FromHtml("#f5f7fa");
         var borderCol = XLColor.FromHtml("#d0d7de");
@@ -483,7 +458,6 @@ public class CustomExportService : ICustomExportService
                 var cell = ws.Cell(r + 2, c + 1);
                 var val  = rows[r][c];
 
-                // Numeric values → stored as numbers so Excel can sort/sum
                 if (decimal.TryParse(val, out var num))
                     cell.Value = num;
                 else
@@ -493,7 +467,6 @@ public class CustomExportService : ICustomExportService
                 cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                 cell.Style.Alignment.Vertical   = XLAlignmentVerticalValues.Center;
 
-                // Thin border on every cell
                 cell.Style.Border.TopBorder    = XLBorderStyleValues.Thin;
                 cell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
                 cell.Style.Border.LeftBorder   = XLBorderStyleValues.Thin;
@@ -505,20 +478,17 @@ public class CustomExportService : ICustomExportService
             }
         }
 
-        // Left-align text columns in the students section
         for (int c = 0; c < totalCols; c++)
         {
             if (headers[c].Section == "students")
                 ws.Column(c + 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
         }
 
-        // ── Section separator: thick left border at each section boundary ─
         string? lastSection = null;
         for (int c = 0; c < totalCols; c++)
         {
             if (lastSection != null && headers[c].Section != lastSection)
             {
-                // Apply thick left border to the entire column (header + data)
                 var rng = ws.Range(ws.Cell(1, c + 1), ws.Cell(totalRows + 1, c + 1));
                 rng.Style.Border.LeftBorder      = XLBorderStyleValues.Medium;
                 rng.Style.Border.LeftBorderColor = XLColor.FromHtml("#6c757d");
@@ -526,7 +496,6 @@ public class CustomExportService : ICustomExportService
             lastSection = headers[c].Section;
         }
 
-        // Also add a thick right border on the very last column
         if (totalCols > 0)
         {
             var lastColRng = ws.Range(ws.Cell(1, totalCols), ws.Cell(totalRows + 1, totalCols));
@@ -534,7 +503,6 @@ public class CustomExportService : ICustomExportService
             lastColRng.Style.Border.RightBorderColor = XLColor.FromHtml("#6c757d");
         }
 
-        // ── Auto-fit columns, cap width ───────────────────────────────────
         ws.Columns().AdjustToContents(1, totalRows + 1);
         foreach (var col in ws.ColumnsUsed())
         {
@@ -542,8 +510,6 @@ public class CustomExportService : ICustomExportService
             if (col.Width < 9)  col.Width = 9;
         }
 
-        // ── Colour legend ─────────────────────────────────────────────────
-        // Collect only the sections that are actually present in this export
         var sectionsUsed = headers.Select(h => h.Section).Distinct().ToList();
 
         var legendLabels = new Dictionary<string, string>
@@ -562,7 +528,6 @@ public class CustomExportService : ICustomExportService
 
         int legendStartRow = totalRows + 3;   // one blank row gap after data
 
-        // "Legend" title
         var titleCell = ws.Cell(legendStartRow, 1);
         titleCell.Value = "Legenda";
         titleCell.Style.Font.Bold     = true;
@@ -575,7 +540,6 @@ public class CustomExportService : ICustomExportService
             if (!legendLabels.TryGetValue(section, out var label)) continue;
             if (!SectionColours.TryGetValue(section, out var colour)) continue;
 
-            // Colour swatch cell
             var swatchCell = ws.Cell(legendStartRow, 1);
             swatchCell.Value = "";
             swatchCell.Style.Fill.BackgroundColor = XLColor.FromHtml(colour);
@@ -583,7 +547,6 @@ public class CustomExportService : ICustomExportService
             swatchCell.Style.Border.OutsideBorderColor = XLColor.FromHtml("#6c757d");
             ws.Column(1).Width = Math.Max(ws.Column(1).Width, 4);
 
-            // Label cell (spans a few columns for readability)
             var labelCell = ws.Cell(legendStartRow, 2);
             labelCell.Value = label;
             labelCell.Style.Font.FontSize  = 10;

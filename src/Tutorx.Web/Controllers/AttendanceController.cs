@@ -59,13 +59,6 @@ public class AttendanceController : Controller
         return RedirectToAction(nameof(Record), redirectParams);
     }
 
-    [HttpPost]
-    public async Task<IActionResult> SaveSingle(int groupId, DateOnly date, TimeOnly? time, int studentId, AttendanceStatus status)
-    {
-        await _attendanceService.SaveAttendanceAsync(groupId, date, time, [(studentId, status)]);
-        return Ok();
-    }
-
     [HttpGet]
     public async Task<IActionResult> History(int? groupId)
     {

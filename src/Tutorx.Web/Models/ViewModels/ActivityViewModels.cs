@@ -99,15 +99,3 @@ public class ManualAssignVm
     public int StudentId { get; set; }
     public List<StudentSummaryVm> AvailableStudents { get; set; } = [];
 }
-
-public class DrawResultVm
-{
-    public int ActivityId { get; set; }
-    public string ActivityName { get; set; } = null!;
-    /// <summary>The display name of the drawn item (activity name or presentation title).</summary>
-    public string SourceName { get; set; } = null!;
-    /// <summary>"Aktivita" or "Prezentácia"</summary>
-    public string DrawTypeName { get; set; } = "Aktivita";
-    public List<string> DrawnStudentNames { get; set; } = [];
-    public List<string> AllStudentNames { get; set; } = [];
-}

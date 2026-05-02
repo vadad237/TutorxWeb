@@ -77,7 +77,6 @@ public class EvaluationService : IEvaluationService
             .Where(a => activityIds.Contains(a.ActivityId))
             .ToListAsync();
 
-        // Count numbered task assignments per (student, activity) via PresentationStudents
         var numberedTaskIds = await _db.TaskItems
             .Where(t => activityIds.Contains(t.ActivityId) && t.IsNumberedTask)
             .Select(t => new { t.Id, t.ActivityId, t.Title })
@@ -99,8 +98,6 @@ public class EvaluationService : IEvaluationService
 
         var assignedStudentTasks = new HashSet<(int StudentId, int TaskItemId)>();
 
-        // Any assignment to an activity (regardless of TaskItemId) means the student
-        // can be evaluated for all regular (non-presentation) tasks in that activity
         var studentActivityPairs = assignments
             .Select(a => (a.StudentId, a.ActivityId))
             .Distinct()
@@ -116,7 +113,6 @@ public class EvaluationService : IEvaluationService
             }
         }
 
-        // Presentations are assigned via PresentationStudents, not Assignments — include them too
         var presentationTaskIds = tasks.Where(t => t.IsPresentation).Select(t => t.Id).ToHashSet();
         if (presentationTaskIds.Count > 0)
         {

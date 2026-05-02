@@ -139,7 +139,6 @@ public class ImportService : IImportService
 
     private static string? NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s;
 
-    /// <summary>Returns the column number (1-based) for the first matching header alias, or -1 if none found.</summary>
     private static int GetCol(Dictionary<string, int> headers, string[] aliases)
     {
         foreach (var alias in aliases)
@@ -147,7 +146,6 @@ public class ImportService : IImportService
         return -1;
     }
 
-    /// <summary>Reads a cell as string, handling both text and numeric cells correctly.</summary>
     private static string GetCellString(IXLCell cell)
     {
         if (cell.DataType == XLDataType.Number)
