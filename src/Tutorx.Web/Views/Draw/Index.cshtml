@@ -2,14 +2,15 @@
 @{
     ViewData["Title"] = "Žrebovanie";
     bool noGroup = (bool?)ViewBag.NoGroupSelected == true;
+    var jsonOpts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = null };
     var activitiesJson = System.Text.Json.JsonSerializer.Serialize(
-        Model?.Activities ?? new List<DrawActivityVm>());
+        Model?.Activities ?? new List<DrawActivityVm>(), jsonOpts);
     var allNamesJson = System.Text.Json.JsonSerializer.Serialize(
         Model?.AllActiveStudentNames ?? new List<string>());
     var initialIdsJson = System.Text.Json.JsonSerializer.Serialize(
         (ViewBag.InitialActivityIds as List<int>) ?? new List<int>());
     var presentationsJson = System.Text.Json.JsonSerializer.Serialize(
-        Model?.Presentations ?? new List<DrawPresentationVm>());
+        Model?.Presentations ?? new List<DrawPresentationVm>(), jsonOpts);
     var initialPresIdsJson = System.Text.Json.JsonSerializer.Serialize(
         (ViewBag.InitialPresentationIds as List<int>) ?? new List<int>());
     var initialPresRole = (string)(ViewBag.InitialPresRole ?? "0");

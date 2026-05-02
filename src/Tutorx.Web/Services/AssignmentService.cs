@@ -133,7 +133,7 @@ public class AssignmentService : IAssignmentService
         return new AssignmentResultDto(assignments, activeStudents.Count, tasks.Count);
     }
 
-    // Draw N random students for the activity, replacing existing assignments
+    // Draw N random students for the activity
     public async Task<List<Student>> DrawForActivityAsync(int activityId, int count)
     {
         var activity = await _db.Activities
