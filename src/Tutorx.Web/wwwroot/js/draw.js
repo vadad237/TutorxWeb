@@ -663,23 +663,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Helper: draw for a specific role and return names, or null on error
         async function drawForRole(role) {
-            var drawUrl, payload;
-            var allowedIdsInt = allowedIds.map(function (sid) { return parseInt(sid, 10); });
+            var drawUrl, drawBody;
             if (cType === 'presentation') {
-                drawUrl = '/Draw/DrawForPresentation';
-                payload = { taskId: selectedId, count: count, role: role, includeAlreadyAssigned: includeAssigned, allowedStudentIds: allowedIdsInt };
+                drawUrl  = '/Draw/DrawForPresentation';
+                drawBody = 'taskId=' + selectedId + '&count=' + count + '&role=' + role
+                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
             } else {
-                drawUrl = '/Draw/DrawForActivity';
-                payload = { activityId: selectedId, count: count, includeAlreadyAssigned: includeAssigned, allowedStudentIds: allowedIdsInt };
+                drawUrl  = '/Draw/DrawForActivity';
+                drawBody = 'activityId=' + selectedId + '&count=' + count
+                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '');
             }
-            console.log('[draw] POST', drawUrl, JSON.stringify(payload));
+            allowedIds.forEach(function (sid) { drawBody += '&allowedStudentIds=' + encodeURIComponent(sid); });
             var resp = await fetch(drawUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: drawBody
             });
             var data = await resp.json();
-            console.log('[draw] response', JSON.stringify(data));
             return data;
         }
 
@@ -743,16 +743,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                var subPayload = {
-                    taskId: selectedId, count: count, role: 1,
-                    includeAlreadyAssigned: includeAssigned,
-                    allowedStudentIds: subAllowedIds.map(function (sid) { return parseInt(sid, 10); }),
-                    batchId: dataP.batchId != null ? dataP.batchId : null
-                };
+                var drawBodyS = 'taskId=' + selectedId + '&count=' + count + '&role=1'
+                    + (includeAssigned ? '&includeAlreadyAssigned=true' : '')
+                    + (dataP.batchId != null ? '&batchId=' + dataP.batchId : '');
+                subAllowedIds.forEach(function (sid) { drawBodyS += '&allowedStudentIds=' + encodeURIComponent(sid); });
                 var respS = await fetch('/Draw/DrawForPresentation', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(subPayload)
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: drawBodyS
                 });
                 var dataS = await respS.json();
 
